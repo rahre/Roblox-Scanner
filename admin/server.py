@@ -8,7 +8,7 @@ from datetime import datetime
 
 # Environment Variables
 DATABASE_URL = os.environ.get('DATABASE_URL')
-MASTER_KEY = os.environ.get('MASTER_KEY', 'gakuran-master-2024')
+MASTER_KEY = os.environ.get('MASTER_KEY', 'natsuxak-master-2024')
 PORT = int(os.environ.get('PORT', 10000))
 
 def get_db_connection():
@@ -472,7 +472,7 @@ def run():
     httpd = ThreadedHTTPServer(server_address, RequestHandler)
     
     print("=============================================")
-    print(f" Gakuran Cheater Checker - Admin Server")
+    print(f" NatsuXAK Scanner - Admin Server")
     print(f" Port: {PORT}")
     print(f" Master Key Configured: {'Yes' if MASTER_KEY else 'No'}")
     print("=============================================")
@@ -494,7 +494,7 @@ def run():
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:
-        print(f"\\n[{datetime.now()}] Shutting down server...")
+        print(f"\n[{datetime.now()}] Shutting down server...")
         httpd.server_close()
 
 if __name__ == '__main__':

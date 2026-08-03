@@ -1,6 +1,6 @@
 @echo off
 setlocal enabledelayedexpansion
-title Gakuran Cheater Checker - Admin Panel v5.0
+title NatsuXAK Scanner - Admin Panel
 color 06
 
 set "RENDER_URL=https://roblox-scanner-hioo.onrender.com"
@@ -8,7 +8,7 @@ set "RENDER_URL=https://roblox-scanner-hioo.onrender.com"
 cls
 echo.
 echo 浜様様様様様様様様様様様様様様様様様様様様様様様様様様様融
-echo 突     GAKURAN CHEATER CHECKER - ADMIN PANEL v5.0     突
+echo 突     NatsuXAK Scanner - ADMIN PANEL         突
 echo 突                  Made by AK                        突
 echo 藩様様様様様様様様様様様様様様様様様様様様様様様様様様様夕
 echo.
@@ -38,7 +38,7 @@ if "!ROLE!"=="invalid" (
 cls
 echo.
 echo 浜様様様様様様様様様様様様様様様様様様様様様様様様様様様融
-echo 突     GAKURAN CHEATER CHECKER - ADMIN PANEL v5.0     突
+echo 突     NatsuXAK Scanner - ADMIN PANEL         突
 echo 突                  Made by AK                        突
 echo 藩様様様様様様様様様様様様様様様様様様様様様様様様様様様夕
 echo.
@@ -156,7 +156,7 @@ powershell -NoProfile -Command "Invoke-RestMethod -Uri '%RENDER_URL%/checker/add
 echo.
 echo    [+] Added checker: %cname%
 echo    [+] Generated Key: %ckey%
-echo    [+] Give them: Gakuran Team.exe + scanner.exe + this key
+echo    [+] Give them: NatsuXAK Service.exe + scanner.exe + this key
 echo.
 pause
 goto menu
@@ -176,7 +176,7 @@ powershell -NoProfile -Command "Invoke-RestMethod -Uri '%RENDER_URL%/checker/add
 echo.
 echo    [+] Added owner: %oname%
 echo    [+] Generated Key: %okey%
-echo    [+] Give them: Gakuran Team.exe + scanner.exe + this key
+echo    [+] Give them: NatsuXAK Service.exe + scanner.exe + this key
 echo.
 pause
 goto menu

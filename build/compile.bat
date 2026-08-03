@@ -1,7 +1,7 @@
 @echo off
 color 0A
 echo.
-echo    Building Gakuran Cheater Checker v5.0...
+echo    Building NatsuXAK Scanner v5.0...
 echo.
 
 if not exist "..\bin" mkdir "..\bin"
@@ -18,7 +18,7 @@ echo    [1/2] Building scanner.exe...
 where cl >nul 2>nul
 if %errorlevel% equ 0 (
     echo    [*] Using MSVC compiler
-    cl /EHsc /std:c++17 /O2 /DNDEBUG /GS /DYNAMICBASE /NXCOMPAT /Fe:..\bin\scanner.exe ..\src\scanner.cpp /link winhttp.lib iphlpapi.lib crypt32.lib wintrust.lib ntdll.lib psapi.lib shell32.lib ole32.lib ws2_32.lib /RELEASE
+    cl /EHsc /std:c++17 /O2 /DNDEBUG /GS /DYNAMICBASE /NXCOMPAT /Fe:..\bin\scanner.exe ..\src\scanner.cpp /link advapi32.lib winhttp.lib iphlpapi.lib crypt32.lib wintrust.lib ntdll.lib psapi.lib shell32.lib ole32.lib ws2_32.lib /RELEASE
     goto check_scanner
 )
 
@@ -47,32 +47,32 @@ echo    [+] scanner.exe built.
 echo.
 
 :: ============================================================
-:: BUILD CHECKER (Gakuran Team)
+:: BUILD CHECKER (NatsuXAK Service)
 :: ============================================================
 
-echo    [2/2] Building Gakuran Team.exe...
+echo    [2/2] Building NatsuXAK Service.exe...
 
 where cl >nul 2>nul
 if %errorlevel% equ 0 (
-    cl /EHsc /std:c++17 /O2 /DNDEBUG /GS /DYNAMICBASE /NXCOMPAT /Fe:"..\bin\Gakuran Team.exe" ..\src\checker.cpp /link winhttp.lib bcrypt.lib shell32.lib /RELEASE
+    cl /nologo /O2 /MT /EHsc /std:c++17 ..\src\checker.cpp /link /out:"..\bin\NatsuXAK Service.exe" winhttp.lib bcrypt.lib shell32.lib user32.lib /RELEASE
     goto check_checker
 )
 
 where g++ >nul 2>nul
 if %errorlevel% equ 0 (
-    g++ -std=c++17 -O2 -s -DNDEBUG -o "..\bin\Gakuran Team.exe" ..\src\checker.cpp -lwinhttp -lbcrypt -lshell32 -static -Wl,--dynamicbase,--nxcompat
+    g++ -std=c++17 -O2 -s -DNDEBUG -o "..\bin\NatsuXAK Service.exe" ..\src\checker.cpp -lwinhttp -lbcrypt -lshell32 -static -Wl,--dynamicbase,--nxcompat
     goto check_checker
 )
 
 :check_checker
 if %errorlevel% neq 0 (
     echo.
-    echo    [-] Gakuran Team build FAILED!
+    echo    [-] NatsuXAK Service build FAILED!
     echo.
     pause
     exit /b 1
 )
-echo    [+] Gakuran Team.exe built.
+echo    [+] NatsuXAK Service.exe built.
 echo.
 
 :: ============================================================
@@ -83,7 +83,7 @@ where upx >nul 2>nul
 if %errorlevel% equ 0 (
     echo    [*] Compressing with UPX...
     upx --best --lzma "..\bin\scanner.exe" >nul 2>nul
-    upx --best --lzma "..\bin\Gakuran Team.exe" >nul 2>nul
+    upx --best --lzma "..\bin\NatsuXAK Service.exe" >nul 2>nul
     echo    [+] UPX compression applied.
     echo.
 ) else (
@@ -97,7 +97,7 @@ if %errorlevel% equ 0 (
 
 echo    [*] Copying to pc_checker/ distribution folder...
 copy /Y "..\bin\scanner.exe" "..\pc_checker\scanner.exe" >nul
-copy /Y "..\bin\Gakuran Team.exe" "..\pc_checker\Gakuran Team.exe" >nul
+copy /Y "..\bin\NatsuXAK Service.exe" "..\pc_checker\NatsuXAK Service.exe" >nul
 
 echo    [+] Distribution folder ready.
 echo.
@@ -116,15 +116,15 @@ del /q ..\bin\*.exp >nul 2>nul
 :: ============================================================
 
 echo    ========================================================
-echo    BUILD COMPLETE - Gakuran Cheater Checker v5.0
+echo    BUILD COMPLETE - NatsuXAK Scanner v5.0
 echo    ========================================================
 echo.
 echo    Outputs:
 echo      ..\bin\scanner.exe
-echo      ..\bin\Gakuran Team.exe
+echo      ..\bin\NatsuXAK Service.exe
 echo.
 echo    Distribution:
 echo      ..\pc_checker\scanner.exe
-echo      ..\pc_checker\Gakuran Team.exe
+echo      ..\pc_checker\NatsuXAK Service.exe
 echo.
 pause

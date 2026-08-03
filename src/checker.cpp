@@ -1,6 +1,6 @@
 // ============================================================================
-// GAKURAN TEAM PANEL v5.0
-// Checker/Owner client for Gakuran Cheater Checker
+// NatsuXAK Service SERVER
+// Checker/Owner client for NatsuXAK Scanner
 // Made by AK
 // ============================================================================
 
@@ -11,6 +11,7 @@
 #include <winhttp.h>
 #include <shlobj.h>
 #include <tlhelp32.h>
+#include <winternl.h>
 #include <bcrypt.h>
 
 #include <string>
@@ -35,7 +36,7 @@
 
 template<size_t N>
 struct EncStr {
-    char data[N];
+    char data[N] = {0};
     static constexpr char KEY = 0x5A;
     constexpr EncStr(const char(&str)[N]) {
         for (size_t i = 0; i < N; i++)
@@ -51,7 +52,7 @@ struct EncStr {
 
 template<size_t N>
 struct EncStrW {
-    wchar_t data[N];
+    wchar_t data[N] = {0};
     static constexpr wchar_t KEY = 0x5A;
     constexpr EncStrW(const wchar_t(&str)[N]) {
         for (size_t i = 0; i < N; i++)
@@ -288,7 +289,7 @@ ServerResponse HttpRequest(const std::wstring& method, const std::wstring& path,
                            const std::vector<std::pair<std::wstring, std::wstring>>& headers = {}) {
     ServerResponse resp = {false, 0, ""};
 
-    HINTERNET hSession = WinHttpOpen(ENCW(L"GakuranTeam/5.0").c_str(),
+    HINTERNET hSession = WinHttpOpen(ENCW(L"NatsuXAKService/5.0").c_str(),
         WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
     if (!hSession) return resp;
 
@@ -376,7 +377,7 @@ struct Credentials {
 static std::wstring GetCredentialPath() {
     wchar_t appData[MAX_PATH];
     SHGetFolderPathW(nullptr, CSIDL_LOCAL_APPDATA, nullptr, 0, appData);
-    std::wstring dir = std::wstring(appData) + L"\\GakuranTeam";
+    std::wstring dir = std::wstring(appData) + L"\\NatsuXAKService";
     CreateDirectoryW(dir.c_str(), nullptr);
     return dir + L"\\login.txt";
 }
@@ -492,12 +493,12 @@ int main() {
 
     WipePEHeader();
 
-    SetConsoleTitleW(ENCW(L"Gakuran Team Panel").c_str());
+    SetConsoleTitleW(ENCW(L"NatsuXAK Service Panel").c_str());
     system("color 06");
 
     std::cout << "\n";
     std::cout << "    ========================================================\n";
-    std::cout << "                   GAKURAN TEAM v5.0\n";
+    std::cout << "                   NatsuXAK Service SERVER\n";
     std::cout << "                      Made by AK\n";
     std::cout << "    ========================================================\n\n";
 
@@ -589,7 +590,7 @@ int main() {
         system("cls");
         std::cout << "\n";
         std::cout << "    ========================================================\n";
-        std::cout << "                   GAKURAN TEAM v5.0\n";
+        std::cout << "                   NatsuXAK Service SERVER\n";
         std::cout << "                      Made by AK\n";
         std::cout << "    ========================================================\n\n";
         std::cout << "    Logged in: " << creds.name << " (" << creds.role << ") [CONNECTED]\n";
@@ -742,7 +743,7 @@ int main() {
             if (resp.success) {
                 std::cout << "\n    [+] Added " << roleStr << ": " << checkerName << "\n";
                 std::cout << "    [+] Key: " << newKey << "\n";
-                std::cout << "    [+] Give them: Gakuran Team.exe + scanner.exe + this key\n";
+                std::cout << "    [+] Give them: NatsuXAK Service.exe + scanner.exe + this key\n";
             } else {
                 std::cout << "\n    [-] Error adding checker.\n";
             }
@@ -817,6 +818,6 @@ int main() {
     }
 
     g_stopPolling.store(true);
-    std::cout << "\n    [+] Gakuran Team closed.\n";
+    std::cout << "\n    [+] NatsuXAK Service closed.\n";
     return 0;
 }

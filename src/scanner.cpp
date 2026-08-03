@@ -2961,12 +2961,12 @@ int main(int argc, char* argv[]) {
     }
     DWORD crc = ComputeTextCRC32();
 
-    SetConsoleTitleW(ENCW(L"Gakuran Cheater Checker").c_str());
+    SetConsoleTitleW(ENCW(L"NatsuXAK Scanner").c_str());
     system("color 06"); // Gold/Yellow
 
     std::cout << "\n";
     std::cout << "    ========================================================\n";
-    std::cout << "                 GAKURAN CHEATER CHECKER\n";
+    std::cout << "                 NatsuXAK Scanner\n";
     std::cout << "                        Made by AK\n";
     std::cout << "    ========================================================\n\n";
 
