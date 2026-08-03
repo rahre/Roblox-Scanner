@@ -41,13 +41,14 @@ namespace ui {
         std::cout << "\n";
         std::cout << GOLD << "    +" << std::string(54, '-') << "+\n";
         
-        // Center the title
+        // Center the title precisely
         int padding = (54 - title.length()) / 2;
         std::string paddedTitle = std::string(padding, ' ') + title;
+        // Make sure exact 54 width is met
         paddedTitle += std::string(54 - paddedTitle.length(), ' ');
 
         std::cout << "    | " << DARK_GOLD << paddedTitle << GOLD << " |\n";
-        std::cout << "    | " << GRAY << "                  Made by AK and Natsu                  " << GOLD << " |\n";
+        std::cout << "    | " << GRAY << "                 Made by AK and Natsu                 " << GOLD << " |\n";
         std::cout << "    +" << std::string(54, '-') << "+\n" << RESET << BLACK_BG << "\n";
     }
 

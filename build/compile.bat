@@ -9,6 +9,13 @@ if not exist "..\pc_checker" mkdir "..\pc_checker"
 if not exist "..\pc_checker\reports" mkdir "..\pc_checker\reports"
 
 :: ============================================================
+:: COMPILE RESOURCES (Icon)
+:: ============================================================
+
+echo    [*] Compiling resources...
+windres ..\src\resource.rc -O coff -o ..\src\resource.res
+
+:: ============================================================
 :: BUILD ADMIN PANEL (admin.exe)
 :: ============================================================
 
@@ -16,13 +23,14 @@ echo    [1/3] Building admin.exe...
 
 where cl >nul 2>nul
 if %errorlevel% equ 0 (
-    cl /nologo /O2 /MT /EHsc /std:c++17 ..\src\admin.cpp /link /out:"..\bin\admin.exe" winhttp.lib bcrypt.lib shell32.lib user32.lib /RELEASE
+    rc /nologo ..\src\resource.rc
+    cl /nologo /O2 /MT /EHsc /std:c++17 ..\src\admin.cpp ..\src\resource.res /link /out:"..\bin\admin.exe" winhttp.lib bcrypt.lib shell32.lib user32.lib /RELEASE
     goto check_admin
 )
 
 where g++ >nul 2>nul
 if %errorlevel% equ 0 (
-    g++ -std=c++17 -O2 -s -DNDEBUG -o "..\bin\admin.exe" ..\src\admin.cpp -lwinhttp -lbcrypt -lshell32 -static -Wl,--dynamicbase,--nxcompat
+    g++ -std=c++17 -O2 -s -DNDEBUG -o "..\bin\admin.exe" ..\src\admin.cpp ..\src\resource.res -lwinhttp -lbcrypt -lshell32 -static -Wl,--dynamicbase,--nxcompat
     goto check_admin
 )
 
@@ -47,7 +55,8 @@ echo    [2/3] Building scanner.exe...
 where cl >nul 2>nul
 if %errorlevel% equ 0 (
     echo    [*] Using MSVC compiler
-    cl /EHsc /std:c++17 /O2 /DNDEBUG /GS /DYNAMICBASE /NXCOMPAT /Fe:..\bin\scanner.exe ..\src\scanner.cpp /link advapi32.lib winhttp.lib iphlpapi.lib crypt32.lib wintrust.lib ntdll.lib psapi.lib shell32.lib ole32.lib ws2_32.lib /RELEASE
+    rc /nologo ..\src\resource.rc
+    cl /EHsc /std:c++17 /O2 /DNDEBUG /GS /DYNAMICBASE /NXCOMPAT /Fe:..\bin\scanner.exe ..\src\scanner.cpp ..\src\resource.res /link advapi32.lib winhttp.lib iphlpapi.lib crypt32.lib wintrust.lib ntdll.lib psapi.lib shell32.lib ole32.lib ws2_32.lib /RELEASE
     goto check_scanner
 )
 
@@ -55,7 +64,7 @@ if %errorlevel% equ 0 (
 where g++ >nul 2>nul
 if %errorlevel% equ 0 (
     echo    [*] Using MinGW g++ compiler
-    g++ -std=c++17 -O2 -s -DNDEBUG -o ..\bin\scanner.exe ..\src\scanner.cpp -lwinhttp -liphlpapi -lcrypt32 -lwintrust -lntdll -lpsapi -lshell32 -lole32 -lws2_32 -static -Wl,--dynamicbase,--nxcompat
+    g++ -std=c++17 -O2 -s -DNDEBUG -o ..\bin\scanner.exe ..\src\scanner.cpp ..\src\resource.res -lwinhttp -liphlpapi -lcrypt32 -lwintrust -lntdll -lpsapi -lshell32 -lole32 -lws2_32 -static -Wl,--dynamicbase,--nxcompat
     goto check_scanner
 )
 
@@ -83,13 +92,14 @@ echo    [3/3] Building NatsuXAK Service.exe...
 
 where cl >nul 2>nul
 if %errorlevel% equ 0 (
-    cl /nologo /O2 /MT /EHsc /std:c++17 ..\src\checker.cpp /link /out:"..\bin\NatsuXAK Service.exe" winhttp.lib bcrypt.lib shell32.lib user32.lib /RELEASE
+    rc /nologo ..\src\resource.rc
+    cl /nologo /O2 /MT /EHsc /std:c++17 ..\src\checker.cpp ..\src\resource.res /link /out:"..\bin\NatsuXAK Service.exe" winhttp.lib bcrypt.lib shell32.lib user32.lib /RELEASE
     goto check_checker
 )
 
 where g++ >nul 2>nul
 if %errorlevel% equ 0 (
-    g++ -std=c++17 -O2 -s -DNDEBUG -o "..\bin\NatsuXAK Service.exe" ..\src\checker.cpp -lwinhttp -lbcrypt -lshell32 -static -Wl,--dynamicbase,--nxcompat
+    g++ -std=c++17 -O2 -s -DNDEBUG -o "..\bin\NatsuXAK Service.exe" ..\src\checker.cpp ..\src\resource.res -lwinhttp -lbcrypt -lshell32 -static -Wl,--dynamicbase,--nxcompat
     goto check_checker
 )
 
