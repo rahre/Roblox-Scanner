@@ -27,6 +27,7 @@
 #include <wbemidl.h>
 #include <comdef.h>
 #include <math.h>
+#include "ui.h"
 #pragma comment(lib, "wbemuuid.lib")
 #pragma comment(lib, "ws2_32.lib")
 
@@ -2797,36 +2798,37 @@ void ShowResult(const CheatResult& r, const std::string& name, const std::string
         std::cout << "    ========================================================\n\n";
     }
 
-    std::cout << "    Player: " << name << "\n";
-    std::cout << "    HWID:   " << hwid << "\n\n";
+    std::cout << "    Player: " << ui::GOLD << name << ui::RESET << "\n";
+    std::cout << "    HWID:   " << ui::GRAY << hwid << ui::RESET << "\n\n";
 
     if (r.findings.empty()) {
-        std::cout << "    [OK] No cheating indicators found.\n\n";
+        ui::PrintSuccess("No cheating indicators found.");
+        std::cout << "\n";
     } else {
         std::cout << "    FINDINGS (" << r.findings.size() << "):\n";
-        std::cout << "    --------------------------------------------------------\n";
+        std::cout << "    " << ui::DARK_GOLD << std::string(56, '-') << ui::RESET << "\n";
         for (const auto& f : r.findings) {
             std::string conf;
-            if (f.confidence >= 90) conf = "[CONFIRMED]";
-            else if (f.confidence >= 70) conf = "[HIGH]";
-            else if (f.confidence >= 50) conf = "[MEDIUM]";
-            else conf = "[LOW]";
+            if (f.confidence >= 90) conf = ui::RED + "[CONFIRMED]";
+            else if (f.confidence >= 70) conf = ui::DARK_GOLD + "[HIGH]";
+            else if (f.confidence >= 50) conf = ui::GOLD + "[MEDIUM]";
+            else conf = ui::GRAY + "[LOW]";
             
             std::string tag = "[" + GetFriendlyCategory(f.category) + "]";
             
-            std::cout << "      " << PadRight(conf, 12) << " " << PadRight(tag, 11) << " " << f.description << "\n";
-            if (!f.evidence.empty()) std::cout << "                                  " << f.evidence << "\n";
+            std::cout << "      " << PadRight(conf, 18) << ui::RESET << " " << ui::GRAY << PadRight(tag, 11) << ui::RESET << " " << f.description << "\n";
+            if (!f.evidence.empty()) std::cout << "                                  " << ui::DARK_GOLD << f.evidence << ui::RESET << "\n";
         }
-        std::cout << "    --------------------------------------------------------\n\n";
+        std::cout << "    " << ui::DARK_GOLD << std::string(56, '-') << ui::RESET << "\n\n";
     }
 
-    std::cout << "    ========================================================\n";
-    std::cout << "    VERDICT: " << r.verdict << "\n";
-    if (r.score >= 80) std::cout << "    ACTION:  BAN IMMEDIATELY\n";
-    else if (r.score >= 50) std::cout << "    ACTION:  INVESTIGATE FURTHER\n";
-    else if (r.score >= 25) std::cout << "    ACTION:  MONITOR CLOSELY\n";
-    else std::cout << "    ACTION:  NONE - PLAYER IS CLEAN\n";
-    std::cout << "    ========================================================\n\n";
+    std::cout << "    " << ui::GOLD << std::string(56, '=') << ui::RESET << "\n";
+    std::cout << "    VERDICT: " << ui::RED << r.verdict << ui::RESET << "\n";
+    if (r.score >= 80) std::cout << "    ACTION:  " << ui::RED << "BAN IMMEDIATELY" << ui::RESET << "\n";
+    else if (r.score >= 50) std::cout << "    ACTION:  " << ui::DARK_GOLD << "INVESTIGATE FURTHER" << ui::RESET << "\n";
+    else if (r.score >= 25) std::cout << "    ACTION:  " << ui::GOLD << "MONITOR CLOSELY" << ui::RESET << "\n";
+    else std::cout << "    ACTION:  " << ui::GREEN << "NONE - PLAYER IS CLEAN" << ui::RESET << "\n";
+    std::cout << "    " << ui::GOLD << std::string(56, '=') << ui::RESET << "\n\n";
 }
 
 // ============================================================================
@@ -2962,20 +2964,14 @@ int main(int argc, char* argv[]) {
     DWORD crc = ComputeTextCRC32();
 
     SetConsoleTitleW(ENCW(L"NatsuXAK Scanner").c_str());
-    system("color 06"); // Gold/Yellow
-
-    std::cout << "\n";
-    std::cout << "    ========================================================\n";
-    std::cout << "                 NatsuXAK Scanner\n";
-    std::cout << "                   Made by AK and Natsu\n";
-    std::cout << "    ========================================================\n\n";
+    ui::EnableANSI();
+    ui::PrintHeader("NatsuXAK Scanner");
 
     std::string name;
     if (argc > 1) {
         name = argv[1];
     } else {
-        std::cout << "    Enter your name: ";
-        std::getline(std::cin, name);
+        name = ui::GetInput("Enter your name: ");
     }
 
     if (name.empty()) {

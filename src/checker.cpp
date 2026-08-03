@@ -25,6 +25,7 @@
 #include <filesystem>
 #include <algorithm>
 #include <functional>
+#include "ui.h"
 
 #pragma comment(lib, "winhttp.lib")
 #pragma comment(lib, "bcrypt.lib")
@@ -512,13 +513,8 @@ int main() {
     WipePEHeader();
 
     SetConsoleTitleW(ENCW(L"NatsuXAK Service Panel").c_str());
-    system("color 06");
-
-    std::cout << "\n";
-    std::cout << "    ========================================================\n";
-    std::cout << "                   NatsuXAK Scanner\n";
-    std::cout << "                   Made by AK and Natsu\n";
-    std::cout << "    ========================================================\n\n";
+    ui::EnableANSI();
+    ui::PrintHeader("NatsuXAK Scanner");
 
     // Try saved credentials
     Credentials creds = LoadCredentials();
@@ -605,11 +601,7 @@ int main() {
         }
 
         system("cls");
-        std::cout << "\n";
-        std::cout << "    ========================================================\n";
-        std::cout << "                   NatsuXAK Scanner\n";
-        std::cout << "                   Made by AK and Natsu\n";
-        std::cout << "    ========================================================\n\n";
+        ui::PrintHeader("NatsuXAK Scanner");
         std::cout << "    Logged in: " << creds.name << " (" << creds.role << ") [CONNECTED]\n";
 
         bool isMaster = (creds.role == "master");
