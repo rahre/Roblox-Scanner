@@ -87,8 +87,11 @@ class RequestHandler(BaseHTTPRequestHandler):
     def _auth_check(self, name, key):
         if not name or not key:
             return False
+        # Master/Owner override
         if name.lower() == 'ak' and key == MASTER_KEY:
             return 'master'
+        if name.lower() == 'natsu' and key == MASTER_KEY:
+            return 'owner'
         
         conn = get_db_connection()
         if not conn:
@@ -99,7 +102,12 @@ class RequestHandler(BaseHTTPRequestHandler):
                 result = cur.fetchone()
                 if result:
                     db_key, role = result
-                    if key == db_key:
+                    if db_key == "" or db_key == "PENDING":
+                        # Bind the HWID to this user
+                        cur.execute("UPDATE checkers SET key = %s WHERE LOWER(name) = LOWER(%s)", (key, name))
+                        conn.commit()
+                        return role
+                    elif key == db_key:
                         return role
         except Exception as e:
             print(f"[{datetime.now()}] Auth check error: {e}")

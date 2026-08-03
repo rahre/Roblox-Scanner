@@ -365,6 +365,24 @@ ServerResponse HttpRequestWithRetry(const std::wstring& method, const std::wstri
 }
 
 // ============================================================================
+// HARDWARE ID
+// ============================================================================
+
+static std::string GetHWID() {
+    HKEY hKey;
+    if (RegOpenKeyExA(HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\Cryptography", 0, KEY_READ | KEY_WOW64_64KEY, &hKey) == ERROR_SUCCESS) {
+        char value[256];
+        DWORD size = sizeof(value);
+        if (RegQueryValueExA(hKey, "MachineGuid", nullptr, nullptr, (LPBYTE)value, &size) == ERROR_SUCCESS) {
+            RegCloseKey(hKey);
+            return std::string(value);
+        }
+        RegCloseKey(hKey);
+    }
+    return "UNKNOWN_HWID";
+}
+
+// ============================================================================
 // CREDENTIALS
 // ============================================================================
 
@@ -499,16 +517,17 @@ int main() {
     std::cout << "\n";
     std::cout << "    ========================================================\n";
     std::cout << "                   NatsuXAK Service SERVER\n";
-    std::cout << "                      Made by AK\n";
+    std::cout << "                   Made by AK and Natsu\n";
     std::cout << "    ========================================================\n\n";
 
     // Try saved credentials
     Credentials creds = LoadCredentials();
+    creds.key = GetHWID();
     bool authenticated = false;
 
-    if (!creds.name.empty() && !creds.key.empty()) {
+    if (!creds.name.empty()) {
         std::cout << "    Saved login found: " << creds.name << "\n";
-        std::cout << "    Authenticating...\n";
+        std::cout << "    Authenticating (HWID Lock)...\n";
 
         std::wstring authPath = ENCW(L"/auth?name=") + AnsiToWide(creds.name) +
                                 ENCW(L"&key=") + AnsiToWide(creds.key);
@@ -530,9 +549,7 @@ int main() {
     if (!authenticated) {
         std::cout << "    Enter Name: ";
         std::getline(std::cin, creds.name);
-        std::cout << "    Enter Key:  ";
-        std::getline(std::cin, creds.key);
-        std::cout << "\n    Authenticating...\n";
+        std::cout << "\n    Authenticating and Locking to HWID...\n";
 
         std::wstring authPath = ENCW(L"/auth?name=") + AnsiToWide(creds.name) +
                                 ENCW(L"&key=") + AnsiToWide(creds.key);
@@ -591,7 +608,7 @@ int main() {
         std::cout << "\n";
         std::cout << "    ========================================================\n";
         std::cout << "                   NatsuXAK Service SERVER\n";
-        std::cout << "                      Made by AK\n";
+        std::cout << "                   Made by AK and Natsu\n";
         std::cout << "    ========================================================\n\n";
         std::cout << "    Logged in: " << creds.name << " (" << creds.role << ") [CONNECTED]\n";
 

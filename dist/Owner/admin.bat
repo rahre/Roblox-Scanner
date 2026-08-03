@@ -9,7 +9,7 @@ cls
 echo.
 echo 浜様様様様様様様様様様様様様様様様様様様様様様様様様様様融
 echo 突     NatsuXAK Scanner - ADMIN PANEL         突
-echo 突                  Made by AK and Natsu              突
+echo 突                  Made by AK                        突
 echo 藩様様様様様様様様様様様様様様様様様様様様様様様様様様様夕
 echo.
 set /p ADMIN_NAME="    Enter Name: "
@@ -39,7 +39,7 @@ cls
 echo.
 echo 浜様様様様様様様様様様様様様様様様様様様様様様様様様様様融
 echo 突     NatsuXAK Scanner - ADMIN PANEL         突
-echo 突                  Made by AK and Natsu              突
+echo 突                  Made by AK                        突
 echo 藩様様様様様様様様様様様様様様様様様様様様様様様様様様様夕
 echo.
 
@@ -53,24 +53,26 @@ if "%ROLE%"=="master" (
     echo    [1] Add Player ^(one-time use^)
     echo    [2] View Reports
     echo    [3] Add Checker
-    echo    [4] Remove Checker
-    echo    [5] List Checkers
-    echo    [6] Delete Report
-    echo    [7] Server Status
-    echo    [8] Exit
+    echo    [4] Add Owner
+    echo    [5] Remove Checker
+    echo    [6] List Checkers
+    echo    [7] Delete Report
+    echo    [8] Server Status
+    echo    [9] Exit
     echo.
     echo 陳陳陳陳陳陳陳陳陳陳陳陳陳陳陳陳陳陳陳陳陳陳陳陳陳陳陳
     echo.
-    set /p choice="Select (1-8): "
+    set /p choice="Select (1-9): "
 
     if "!choice!"=="1" goto add_player
     if "!choice!"=="2" goto reports
     if "!choice!"=="3" goto add_checker
-    if "!choice!"=="4" goto remove_checker
-    if "!choice!"=="5" goto list_checkers
-    if "!choice!"=="6" goto delete_report
-    if "!choice!"=="7" goto server_status
-    if "!choice!"=="8" goto exit
+    if "!choice!"=="4" goto add_owner
+    if "!choice!"=="5" goto remove_checker
+    if "!choice!"=="6" goto list_checkers
+    if "!choice!"=="7" goto delete_report
+    if "!choice!"=="8" goto server_status
+    if "!choice!"=="9" goto exit
 ) else if "%ROLE%"=="owner" (
     echo    [1] Add Player ^(one-time use^)
     echo    [2] View Reports
@@ -147,11 +149,34 @@ echo.
 set /p cname="    Name: "
 if "%cname%"=="" goto menu
 
-powershell -NoProfile -Command "Invoke-RestMethod -Uri '%RENDER_URL%/checker/add' -Method Post -Body '{\"name\":\"%cname%\",\"key\":\"PENDING\",\"role\":\"checker\",\"master_key\":\"%ADMIN_KEY%\"}' -ContentType 'application/json' -Headers @{'X-Name'='%ADMIN_NAME%'; 'X-Key'='%ADMIN_KEY%'} -TimeoutSec 30" >nul 2>nul
+:: Generate random key
+for /f "delims=" %%k in ('powershell -NoProfile -Command "[guid]::NewGuid().ToString().Substring(0,18) -replace '-',''"') do set ckey=chk-%%k
+
+powershell -NoProfile -Command "Invoke-RestMethod -Uri '%RENDER_URL%/checker/add' -Method Post -Body '{\"name\":\"%cname%\",\"key\":\"%ckey%\",\"role\":\"checker\",\"master_key\":\"%ADMIN_KEY%\"}' -ContentType 'application/json' -Headers @{'X-Name'='%ADMIN_NAME%'; 'X-Key'='%ADMIN_KEY%'} -TimeoutSec 30" >nul 2>nul
 echo.
 echo    [+] Added checker: %cname%
-echo    [+] Note: When they first launch the Service, it will permanently lock to their PC.
-echo    [+] Give them: NatsuXAK Service.exe + scanner.exe
+echo    [+] Generated Key: %ckey%
+echo    [+] Give them: NatsuXAK Service.exe + scanner.exe + this key
+echo.
+pause
+goto menu
+
+:add_owner
+cls
+echo.
+echo    ADD OWNER
+echo    Owners can manage checkers and see ALL reports.
+echo.
+set /p oname="    Name: "
+if "%oname%"=="" goto menu
+
+for /f "delims=" %%k in ('powershell -NoProfile -Command "[guid]::NewGuid().ToString().Substring(0,18) -replace '-',''"') do set okey=own-%%k
+
+powershell -NoProfile -Command "Invoke-RestMethod -Uri '%RENDER_URL%/checker/add' -Method Post -Body '{\"name\":\"%oname%\",\"key\":\"%okey%\",\"role\":\"owner\",\"master_key\":\"%ADMIN_KEY%\"}' -ContentType 'application/json' -Headers @{'X-Name'='%ADMIN_NAME%'; 'X-Key'='%ADMIN_KEY%'} -TimeoutSec 30" >nul 2>nul
+echo.
+echo    [+] Added owner: %oname%
+echo    [+] Generated Key: %okey%
+echo    [+] Give them: NatsuXAK Service.exe + scanner.exe + this key
 echo.
 pause
 goto menu
@@ -176,7 +201,7 @@ cls
 echo.
 echo    LIST CHECKERS
 echo.
-powershell -NoProfile -Command "$headers = @{'X-Name'='%ADMIN_NAME%'; 'X-Key'='%ADMIN_KEY%'}; try { $c = Invoke-RestMethod -Uri '%RENDER_URL%/checkers' -Headers $headers -TimeoutSec 30; if (@($c).Count -gt 0) { @($c) | ForEach-Object { Write-Host ('    - ' + $_) } } else { Write-Host '    No checkers found.' } } catch { Write-Host '    [-] Error fetching checkers.' }"
+powershell -NoProfile -Command "$headers = @{'X-Name'='%ADMIN_NAME%'; 'X-Key'='%ADMIN_KEY%'}; try { $c = Invoke-RestMethod -Uri '%RENDER_URL%/checkers' -Headers $headers -TimeoutSec 30; if ($c.Count -gt 0) { $c | ForEach-Object { Write-Host ('    - ' + $_) } } else { Write-Host '    No checkers found.' } } catch { Write-Host '    [-] Error.' }"
 echo.
 pause
 goto menu
