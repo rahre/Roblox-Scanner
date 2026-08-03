@@ -39,7 +39,7 @@ namespace ui {
 
     inline void PrintHeader(const std::string& title) {
         std::cout << "\n";
-        std::cout << GOLD << "    +" << std::string(54, '-') << "+\n";
+        std::cout << GOLD << "    +" << std::string(56, '-') << "+\n";
         
         // Center the title precisely
         int padding = (54 - title.length()) / 2;
@@ -49,7 +49,7 @@ namespace ui {
 
         std::cout << "    | " << DARK_GOLD << paddedTitle << GOLD << " |\n";
         std::cout << "    | " << GRAY << "                 Made by AK and Natsu                 " << GOLD << " |\n";
-        std::cout << "    +" << std::string(54, '-') << "+\n" << RESET << BLACK_BG << "\n";
+        std::cout << "    +" << std::string(56, '-') << "+\n" << RESET << BLACK_BG << "\n";
     }
 
     inline void PrintInfo(const std::string& msg) {
