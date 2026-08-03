@@ -401,7 +401,7 @@ static std::wstring GetCredentialPath() {
 }
 
 static bool SaveCredentials(const Credentials& c) {
-    std::ofstream f(GetCredentialPath());
+    std::ofstream f(WideToAnsi(GetCredentialPath()));
     if (!f.is_open()) return false;
     f << c.name << "\n" << c.key;
     f.close();
@@ -410,7 +410,7 @@ static bool SaveCredentials(const Credentials& c) {
 
 static Credentials LoadCredentials() {
     Credentials c;
-    std::ifstream f(GetCredentialPath());
+    std::ifstream f(WideToAnsi(GetCredentialPath()));
     if (f.is_open()) {
         std::getline(f, c.name);
         std::getline(f, c.key);
@@ -461,7 +461,7 @@ static int SyncReports(const Credentials& creds) {
         std::wstring rptPath = ENCW(L"/report/") + AnsiToWide(name);
         auto rptResp = HttpRequest(L"GET", rptPath, "", headers);
         if (rptResp.success) {
-            std::ofstream f(localPath);
+            std::ofstream f(WideToAnsi(localPath));
             if (f.is_open()) {
                 f << rptResp.body;
                 f.close();

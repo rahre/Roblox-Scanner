@@ -2556,7 +2556,7 @@ CheatResult FullScan() {
         // Try to copy the locked SRUM database
         if (CopyFileW(srumPath.c_str(), srumCopy.c_str(), FALSE)) {
             try {
-                std::ifstream f(srumCopy, std::ios::binary);
+                std::ifstream f(WideToAnsi(srumCopy).c_str(), std::ios::binary);
                 if (f.is_open()) {
                     std::string content;
                     content.resize(20 * 1024 * 1024); // 20MB max
