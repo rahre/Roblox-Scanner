@@ -8,7 +8,7 @@ from datetime import datetime
 
 # Environment Variables
 DATABASE_URL = os.environ.get('DATABASE_URL')
-MASTER_KEY = os.environ.get('MASTER_KEY', 'natsuxak-master-2024')
+MASTER_KEY = os.environ.get('MASTER_KEY', 'NatsuXAK2026')
 PORT = int(os.environ.get('PORT', 10000))
 
 def get_db_connection():

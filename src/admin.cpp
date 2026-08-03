@@ -121,6 +121,9 @@ bool Authenticate() {
                     return true;
                 }
             }
+        } else if (resp.status == 403) {
+            // Explicitly rejected
+            return false;
         }
         ui::PrintInfo("Retrying...");
         Sleep(3000);
