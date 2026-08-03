@@ -1,0 +1,30 @@
+﻿# Binaries
+bin/
+*.exe
+*.obj
+*.lib
+*.exp
+*.pdb
+*.ilk
+
+# Distribution (old binaries)
+pc_checker/*.exe
+bin.zip
+
+# IDE / Editor
+.vs/
+.vscode/
+*.suo
+*.user
+
+# Python
+__pycache__/
+*.pyc
+
+# OS
+Thumbs.db
+desktop.ini
+
+# Old tunnel artifacts
+cloudflared.exe
+*.vbs
