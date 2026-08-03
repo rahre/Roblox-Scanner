@@ -516,7 +516,7 @@ int main() {
 
     std::cout << "\n";
     std::cout << "    ========================================================\n";
-    std::cout << "                   NatsuXAK Service SERVER\n";
+    std::cout << "                   NatsuXAK Scanner\n";
     std::cout << "                   Made by AK and Natsu\n";
     std::cout << "    ========================================================\n\n";
 
@@ -607,7 +607,7 @@ int main() {
         system("cls");
         std::cout << "\n";
         std::cout << "    ========================================================\n";
-        std::cout << "                   NatsuXAK Service SERVER\n";
+        std::cout << "                   NatsuXAK Scanner\n";
         std::cout << "                   Made by AK and Natsu\n";
         std::cout << "    ========================================================\n\n";
         std::cout << "    Logged in: " << creds.name << " (" << creds.role << ") [CONNECTED]\n";
