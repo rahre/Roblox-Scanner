@@ -38,18 +38,27 @@ namespace ui {
     }
 
     inline void PrintHeader(const std::string& title) {
+        const int WIDTH = 56; // Fixed inner text width
         std::cout << "\n";
-        std::cout << GOLD << "    +" << std::string(56, '-') << "+\n";
         
-        // Center the title precisely
-        int padding = (54 - title.length()) / 2;
-        std::string paddedTitle = std::string(padding, ' ') + title;
-        // Make sure exact 54 width is met
-        paddedTitle += std::string(54 - paddedTitle.length(), ' ');
+        // Border: 4 spaces padding, '+', WIDTH+2 dashes, '+'
+        std::cout << GOLD << "    +" << std::string(WIDTH + 2, '-') << "+\n";
+        
+        // Title line
+        int padding = (WIDTH - title.length()) / 2;
+        std::string leftPad(padding, ' ');
+        std::string rightPad(WIDTH - title.length() - padding, ' ');
+        std::cout << "    | " << DARK_GOLD << leftPad << title << rightPad << GOLD << " |\n";
 
-        std::cout << "    | " << DARK_GOLD << paddedTitle << GOLD << " |\n";
-        std::cout << "    | " << GRAY << "                 Made by AK and Natsu                 " << GOLD << " |\n";
-        std::cout << "    +" << std::string(56, '-') << "+\n" << RESET << BLACK_BG << "\n";
+        // Subtitle line
+        std::string subtitle = "Made by AK and Natsu";
+        int subPadding = (WIDTH - subtitle.length()) / 2;
+        std::string subLeftPad(subPadding, ' ');
+        std::string subRightPad(WIDTH - subtitle.length() - subPadding, ' ');
+        std::cout << "    | " << GRAY << subLeftPad << subtitle << subRightPad << GOLD << " |\n";
+
+        // Bottom border
+        std::cout << "    +" << std::string(WIDTH + 2, '-') << "+\n" << RESET << BLACK_BG << "\n";
     }
 
     inline void PrintInfo(const std::string& msg) {
