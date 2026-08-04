@@ -309,7 +309,7 @@ const std::vector<std::wstring> CHEAT_SIGNATURES = {
     L"bunni executor", L"bunni exploit",
     L"codex executor", L"codex exploit",
     L"wave executor", L"wave exploit",
-    L"swift executor", L"velocity executor",
+    L"velocity executor",
     L"lx63", L"alysse executor", L"alysse exploit",
     L"hydrogen executor", L"hydrogen exploit",
     L"electron executor", L"celex", L"celex v2",
@@ -353,7 +353,6 @@ const std::vector<std::wstring> CHEAT_FILE_SIGNATURES = {
     L"bunni", L"bunniexecutor",
     L"codex", L"codexexecutor",
     L"wave", L"waveexecutor",
-    L"swift", L"swiftexecutor",
     L"velocity", L"velocityexecutor",
     L"lx63", L"hydrogen", L"celex", L"alysse",
     L"luna", L"zenith", L"neutron", L"incognito", L"horizon",
@@ -383,7 +382,7 @@ const std::vector<std::wstring> FOLDER_SIGS = {
     L"fluxus_data", L"synapse_data", L"krnl_data", L"sirhurt_data",
     L"workspace\\autoexec",
     L"delta executor", L"xeno executor", L"bunni executor",
-    L"codex executor", L"wave executor", L"swift executor",
+    L"codex executor", L"wave executor", L"velocity executor",
     L"serotonin", L"thunderaim",
     L"wearedevs", L"easyexploits", L"matrixhub",
     L"oldui", L"newui",
@@ -2887,8 +2886,8 @@ void ShowResult(const CheatResult& r, const std::string& name, const std::string
                     else if (f.confidence > 0) conf = ui::GRAY + "[LOW]";
                     else conf = ui::GRAY + "[INFO]";
                     
-                    std::cout << "      " << PadRight(conf, 18) << ui::RESET << " " << f.description << "\n";
-                    if (!f.evidence.empty()) std::cout << "                                  " << ui::DARK_GOLD << f.evidence << ui::RESET << "\n";
+                    std::cout << "      " << conf << ui::RESET << " " << f.description << "\n";
+                    if (!f.evidence.empty()) std::cout << "          " << ui::DARK_GOLD << f.evidence << ui::RESET << "\n";
                 }
                 std::cout << "\n";
             }
@@ -2938,7 +2937,7 @@ std::string BuildReportText(const CheatResult& r, const std::string& name, const
                 else if (f.confidence > 0) conf = "LOW";
                 else conf = "INFO";
                 
-                rpt << "  [" << PadRight(conf, 9) << "] " << f.description << "\n";
+                rpt << "  [" << conf << "] " << f.description << "\n";
                 if (!f.evidence.empty()) rpt << "              " << f.evidence << "\n";
             }
             rpt << "\n";
@@ -3035,7 +3034,16 @@ bool PostReportToServer(const CheatResult& r, const std::string& name, const std
 // ============================================================================
 
 int main(int argc, char* argv[]) {
+    // Set console dimensions but increase buffer height significantly so users can scroll up
     system("mode con cols=140 lines=50");
+    HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+    if (hOut != INVALID_HANDLE_VALUE) {
+        CONSOLE_SCREEN_BUFFER_INFO csbi;
+        if (GetConsoleScreenBufferInfo(hOut, &csbi)) {
+            csbi.dwSize.Y = 9999;
+            SetConsoleScreenBufferSize(hOut, csbi.dwSize);
+        }
+    }
     // Anti-RE: detect debuggers, disassemblers, process monitors
     if (AntiDebugCheck()) {
         // MessageBoxW(nullptr, L"This application requires .NET Framework 4.8 or later.\nPlease install it from microsoft.com and try again.", L"Runtime Error", MB_ICONERROR);

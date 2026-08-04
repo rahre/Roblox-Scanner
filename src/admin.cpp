@@ -431,7 +431,16 @@ void ServerStatus() {
 }
 
 int main() {
+    // Set console dimensions and increase buffer height significantly so users can scroll up
     system("mode con cols=140 lines=50");
+    HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+    if (hOut != INVALID_HANDLE_VALUE) {
+        CONSOLE_SCREEN_BUFFER_INFO csbi;
+        if (GetConsoleScreenBufferInfo(hOut, &csbi)) {
+            csbi.dwSize.Y = 9999;
+            SetConsoleScreenBufferSize(hOut, csbi.dwSize);
+        }
+    }
     SetConsoleTitleW(L"NatsuXAK Scanner - Admin Panel");
     ui::EnableANSI();
     ui::BootAnimation();
