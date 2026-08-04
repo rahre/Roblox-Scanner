@@ -322,7 +322,7 @@ const std::vector<std::wstring> CHEAT_SIGNATURES = {
     L"extreme injector", L"celery executor",
     L"rc7", L"proto smasher", L"calamari",
     L"coco z", L"valyse", L"nezur",
-    L"seliware", L"bloxstrap", L"fishstrap",
+    L"seliware",
     // Matrix hub variants
     L"matrixhub", L"matrix hub", L"matrix external",
     L"matrix executor", L"matrix exploit", L"matrix aimbot",
@@ -358,7 +358,7 @@ const std::vector<std::wstring> CHEAT_FILE_SIGNATURES = {
     L"luna", L"zenith", L"neutron", L"incognito", L"horizon",
     L"oldui", L"newui", L"matrixhub", L"matrix",
     L"serotonin", L"thunderaim", L"match",
-    L"seliware", L"bloxstrap", L"fishstrap",
+    L"seliware",
     // DLL injectors
     L"rbxinjector", L"luainjector", L"exploitapi",
     L"krnlss", L"celeryinject", L"wpfui",
@@ -2759,22 +2759,32 @@ CheatResult FullScan() {
         }
     }
 
+    // ========================================================================
+    // PHASE 31: Bootstrapper Detection
+    // Safely detects alternative Roblox bootstrappers without flagging them as cheats
+    // ========================================================================
+    {
+        wchar_t localAppData[MAX_PATH];
+        SHGetFolderPathW(nullptr, CSIDL_LOCAL_APPDATA, nullptr, 0, localAppData);
+        std::vector<std::wstring> bootstrappers = {L"Bloxstrap", L"Fishstrap", L"Voidstrap", L"Frostrap"};
+        for (const auto& strap : bootstrappers) {
+            std::wstring path = std::wstring(localAppData) + L"\\" + strap;
+            if (std::filesystem::exists(path)) {
+                r.findings.push_back({
+                    "BOOTSTRAPPER",
+                    WideToAnsi(strap),
+                    0,
+                    "Alternative Roblox Bootstrapper installed at: " + WideToAnsi(path)
+                });
+            }
+        }
+    }
+
     UpdateProgress(31, 31);
 
     // ========================================================================
     // SCORING + VERDICT
     // ========================================================================
-    // Deduct score for bootstrappers so they don't flag as cheats, but remain in the report for info
-    int bootstrapperDeduction = 0;
-    for (auto& f : r.findings) {
-        if (GetBroadCategory(f) == "Bootstrappers") {
-            f.confidence = 0; // Set to INFO level
-            bootstrapperDeduction += 20; // Counteract the score added during the scan
-        }
-    }
-    r.score -= bootstrapperDeduction;
-    if (r.score < 0) r.score = 0;
-
     r.score = (std::min)(r.score, 100);
     if (r.score >= 80) r.verdict = "CONFIRMED CHEATER";
     else if (r.score >= 50) r.verdict = "LIKELY CHEATER";
@@ -2811,7 +2821,8 @@ std::string GetBroadCategory(const Finding& f) {
 
     if (cat == "BROWSER_HISTORY" || cat == "DELETED_BROWSER_HISTORY") return "Search History";
 
-    if (lowerDesc.find(L"bloxstrap") != std::wstring::npos || lowerEvid.find(L"bloxstrap") != std::wstring::npos ||
+    if (cat == "BOOTSTRAPPER" || 
+        lowerDesc.find(L"bloxstrap") != std::wstring::npos || lowerEvid.find(L"bloxstrap") != std::wstring::npos ||
         lowerDesc.find(L"voidstrap") != std::wstring::npos || lowerEvid.find(L"voidstrap") != std::wstring::npos ||
         lowerDesc.find(L"frostrap") != std::wstring::npos || lowerEvid.find(L"frostrap") != std::wstring::npos ||
         lowerDesc.find(L"fishstrap") != std::wstring::npos || lowerEvid.find(L"fishstrap") != std::wstring::npos) {
@@ -2911,7 +2922,7 @@ void ShowResult(const CheatResult& r, const std::string& name, const std::string
 
 std::string BuildReportText(const CheatResult& r, const std::string& name, const std::string& hwid) {
     std::ostringstream rpt;
-    rpt << "ROBLOX SCAN REPORT 5.0\n";
+    rpt << "ROBLOX SCAN REPORT\n";
     rpt << "========================\n";
     rpt << "Player: " << name << "\n";
     rpt << "HWID: " << hwid << "\n";
