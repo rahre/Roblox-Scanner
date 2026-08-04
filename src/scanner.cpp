@@ -301,7 +301,7 @@ const std::set<std::wstring> WINDOWS_DLL_WHITELIST = {
 const std::vector<std::wstring> CHEAT_SIGNATURES = {
     // Debuggers / RE tools
     L"cheatengine", L"cheat engine", L"processhacker", L"process hacker",
-    L"x64dbg", L"x32dbg", L"ollydbg", L"dnspy",
+    L"x64dbg", L"x32dbg", L"ollydbg", L"dnspy", L"ida pro", L"ghidra",
     // Roblox exploits — executor names
     L"synapse x", L"synapsex", L"synapse z", L"synapsez",
     L"krnl", L"fluxus", L"fluxusz", L"scriptware", L"script-ware",
@@ -326,31 +326,35 @@ const std::vector<std::wstring> CHEAT_SIGNATURES = {
     L"wearedevs", L"easyexploits", L"kingexploits",
     L"bloxproducts", L"getcore.cc", L"robloxhax",
     L"scriptblox", L"infinite yield", L"dex explorer",
-    L"extreme injector", L"celery executor",
+    L"extreme injector", L"celery executor", L"celery injector",
     L"rc7", L"proto smasher", L"calamari",
     L"coco z", L"valyse", L"nezur",
-    L"seliware",
-    // Matrix hub variants
+    L"seliware", L"oxygen u", L"oxygen-u", L"kiwi x", L"kiwix", L"comet executor",
+    L"shadow executor", L"aspect executor", L"novaline", L"sigma executor", L"meteor executor",
+    L"appleware", L"nexus executor", L"cryptic executor", L"phantom executor",
+    L"eclipse executor", L"omega executor", L"ro-exec", L"krampus.gg",
+    // Matcha / External / aimbot tools
+    L"matcha.exe", L"matcha aimbot", L"matcha external", L"matcha esp", L"matcha cheat", L"matcha exploit",
+    L"aimmy", L"aimmy.exe", L"aimmy-", L"aimblox", L"camlock", L"roblox camlock",
     L"matrixhub", L"matrix hub", L"matrix external",
     L"matrix executor", L"matrix exploit", L"matrix aimbot",
     L"oldui", L"newui", L"old ui", L"new ui",
-    // External / aimbot tools
     L"serotonin external", L"serotonin exploit", L"serotonin executor",
     L"thunder aim", L"thunderaim",
-    L"da hood aimbot", L"da hood external",
+    L"da hood aimbot", L"da hood external", L"da hood script", L"dahood aimbot",
     L"rivals aimbot", L"rivals external", L"rivals esp",
     L"silent aim", L"silentaim", L"roblox aimbot", L"roblox esp hack",
     L"desync exploit", L"server-sided desync",
     L"triggerbot", L"roblox triggerbot",
     L"hitbox expander", L"hitbox exploit",
-    L"match external", L"match exploit", L"match aimbot",
+    L"match external", L"match exploit", L"match aimbot", // Re-added safe match strings
     // HWID spoofer names
     L"hwid-spoofer", L"hwid spoofer", L"easyhwid", L"qlitech",
-    L"permanentspoofer", L"ruinspoofer",
+    L"permanentspoofer", L"ruinspoofer", L"mac address changer", L"volumeid", L"hwid changer",
 };
 
 const std::vector<std::wstring> CHEAT_FILE_SIGNATURES = {
-    // From Crow Scanner — 60 file signatures
+    // 100+ file signatures
     L"solara", L"fluxus", L"fluxusz", L"krnl", L"jjsploit",
     L"trigon", L"synapsex", L"synapsez", L"sirhurt",
     L"arceusx", L"evon", L"dansploit", L"roexec",
@@ -363,17 +367,21 @@ const std::vector<std::wstring> CHEAT_FILE_SIGNATURES = {
     L"velocity", L"velocityexecutor",
     L"lx63", L"hydrogen", L"celex", L"alysse",
     L"luna", L"zenith", L"neutron", L"incognito", L"horizon",
-    L"oldui", L"newui", L"matrixhub", L"matrix",
+    L"oldui", L"newui", L"matrixhub", L"matrix external", L"matrix aimbot",
     L"serotonin", L"thunderaim",
-    L"seliware",
+    L"seliware", L"oxygen u", L"kiwi x", L"comet executor", L"shadow executor",
+    L"appleware", L"nexus executor", L"cryptic executor", L"phantom executor",
+    L"matcha.exe", L"matcha aimbot", L"matcha external", L"aimmy", L"camlock",
+    L"da hood aimbot", L"rivals aimbot", L"silent aim",
+    L"celeryinject", L"wpfui", L"celeryexecutor",
     // DLL injectors
     L"rbxinjector", L"luainjector", L"exploitapi",
-    L"krnlss", L"celeryinject", L"wpfui",
+    L"krnlss", L"wpfui", L"injector.exe", L"extreme injector",
     // Lua scripts
     L"autoexec", L"autoattach",
     // Original entries
     L"cheatengine", L"cheat engine", L"processhacker", L"process hacker",
-    L"extreme injector", L"wearedevs",
+    L"wearedevs",
     L"rc7", L"proto smasher",
     L"valyse", L"nezur",
     L"hwid-spoofer", L"hwid spoofer", L"easyhwid",
@@ -390,9 +398,10 @@ const std::vector<std::wstring> FOLDER_SIGS = {
     L"workspace\\autoexec",
     L"delta executor", L"xeno executor", L"bunni executor",
     L"codex executor", L"wave executor", L"velocity executor",
-    L"serotonin", L"thunderaim",
+    L"serotonin", L"thunderaim", L"matcha", L"matcha aimbot", L"aimmy",
     L"wearedevs", L"easyexploits", L"matrixhub",
-    L"oldui", L"newui",
+    L"oldui", L"newui", L"oxygen u", L"kiwi x",
+    L"appleware", L"krampus", L"ro-exec", L"celery",
 };
 
 // Android emulator detection
@@ -422,6 +431,11 @@ const std::vector<std::string> BROWSER_CHEAT_URLS = {
     "matrixhubs.shop", "matrixhub.xyz",
     "keybypass.net", "linkvertise.com",
     "v3rmillion.net", "robloxhax.com", "pastebin.com",
+    "discord.gg/solara", "discord.gg/krnl", "discord.gg/fluxus",
+    "github.com/aimmy", "matcha.gg", "matcha-aimbot.com",
+    "ro-exec.com", "krampus.gg", "krampus.net", "appleware.dev",
+    "oxygenu.com", "kiwix.com", "celery.zip", "celeryexecutor",
+    "synapsex.net", "synapse.to", "script-ware.com",
 };
 
 // Directories in AppData to SKIP during file scanning — these are known-safe
