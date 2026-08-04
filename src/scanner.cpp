@@ -2845,9 +2845,164 @@ CheatResult FullScan() {
             EvtClose(hResults);
         }
     }
+    // ========================================================================
+    // PHASE 34: Hosts File Telemetry Scan
+    // Detects Roblox crash/analytics servers being routed to localhost
+    // ========================================================================
+    {
+        wchar_t sysDir[MAX_PATH];
+        if (GetSystemDirectoryW(sysDir, MAX_PATH)) {
+            std::wstring hostsPath = std::wstring(sysDir) + L"\\drivers\\etc\\hosts";
+            std::ifstream file(WideToAnsi(hostsPath));
+            if (file.is_open()) {
+                std::string line;
+                while (std::getline(file, line)) {
+                    std::string lowerLine = line;
+                    std::transform(lowerLine.begin(), lowerLine.end(), lowerLine.begin(), ::tolower);
+                    if (lowerLine.find("roblox.com") != std::string::npos || lowerLine.find("roblox.net") != std::string::npos) {
+                        if (lowerLine.find("127.0.0.1") != std::string::npos || lowerLine.find("0.0.0.0") != std::string::npos) {
+                            r.findings.push_back({
+                                "TELEMETRY_BLOCK",
+                                "Roblox Hosts File Tampering",
+                                85,
+                                "Roblox telemetry server blocked: " + line
+                            });
+                            r.score += 50;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
 
-    UpdateProgress(33, 33);
+    // ========================================================================
+    // PHASE 35: Discord RPC / LevelDB Cache Scan
+    // Detects cheat rich presence logged by Discord
+    // ========================================================================
+    {
+        wchar_t appData[MAX_PATH];
+        if (SUCCEEDED(SHGetFolderPathW(NULL, CSIDL_APPDATA, NULL, 0, appData))) {
+            std::vector<std::wstring> discordDirs = { L"\\discord", L"\\discordcanary", L"\\discordptb" };
+            for (const auto& dir : discordDirs) {
+                std::wstring ldbPath = std::wstring(appData) + dir + L"\\Local Storage\\leveldb";
+                if (std::filesystem::exists(ldbPath)) {
+                    for (const auto& entry : std::filesystem::directory_iterator(ldbPath)) {
+                        if (entry.path().extension() == ".ldb" || entry.path().extension() == ".log") {
+                            std::ifstream file(entry.path().string(), std::ios::binary);
+                            if (file.is_open()) {
+                                std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+                                std::string lowerContent = content;
+                                std::transform(lowerContent.begin(), lowerContent.end(), lowerContent.begin(), ::tolower);
+                                for (const auto& keyword : BROWSER_CHEAT_URLS) {
+                                    if (lowerContent.find(keyword) != std::string::npos) {
+                                        r.findings.push_back({
+                                            "DISCORD_RPC_CACHE",
+                                            "Discord RPC Cheat Log",
+                                            80,
+                                            "Discord logged execution of: " + keyword
+                                        });
+                                        r.score += 30;
+                                        break; // Only flag once per file
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 
+    // ========================================================================
+    // PHASE 36: USB Plug-and-Pull Forensics
+    // Detects if a USB drive was recently removed (common for portable cheats)
+    // ========================================================================
+    {
+        HKEY hKey;
+        if (RegOpenKeyExW(HKEY_LOCAL_MACHINE, L"SYSTEM\\CurrentControlSet\\Enum\\USBSTOR", 0, KEY_READ, &hKey) == ERROR_SUCCESS) {
+            DWORD subKeys = 0;
+            DWORD maxSubKeyLen = 0;
+            if (RegQueryInfoKeyW(hKey, NULL, NULL, NULL, &subKeys, &maxSubKeyLen, NULL, NULL, NULL, NULL, NULL, NULL) == ERROR_SUCCESS) {
+                for (DWORD i = 0; i < subKeys; i++) {
+                    std::vector<wchar_t> keyName(maxSubKeyLen + 1);
+                    DWORD keyNameLen = maxSubKeyLen + 1;
+                    FILETIME lastWriteTime;
+                    if (RegEnumKeyExW(hKey, i, keyName.data(), &keyNameLen, NULL, NULL, NULL, &lastWriteTime) == ERROR_SUCCESS) {
+                        FILETIME ftNow;
+                        GetSystemTimeAsFileTime(&ftNow);
+                        
+                        ULARGE_INTEGER ulNow, ulLastWrite;
+                        ulNow.LowPart = ftNow.dwLowDateTime;
+                        ulNow.HighPart = ftNow.dwHighDateTime;
+                        ulLastWrite.LowPart = lastWriteTime.dwLowDateTime;
+                        ulLastWrite.HighPart = lastWriteTime.dwHighDateTime;
+                        
+                        unsigned long long diff = ulNow.QuadPart - ulLastWrite.QuadPart;
+                        unsigned long long diffHours = diff / 10000000ULL / 3600ULL;
+                        
+                        if (diffHours < 24) {
+                            std::wstring wideKeyName = keyName.data();
+                            r.findings.push_back({
+                                "USB_PLUG_PULL",
+                                "Recent USB Device Activity",
+                                40,
+                                "A USB device was plugged/unplugged within 24h: " + WideToAnsi(wideKeyName)
+                            });
+                        }
+                    }
+                }
+            }
+            RegCloseKey(hKey);
+        }
+    }
+
+    // ========================================================================
+    // PHASE 37: Roblox Crash Log Forensics
+    // Detects injected DLL traces in Roblox crash telemetry
+    // ========================================================================
+    {
+        wchar_t localAppData[MAX_PATH];
+        if (SUCCEEDED(SHGetFolderPathW(NULL, CSIDL_LOCAL_APPDATA, NULL, 0, localAppData))) {
+            std::wstring logPath = std::wstring(localAppData) + L"\\Roblox\\logs";
+            if (std::filesystem::exists(logPath)) {
+                for (const auto& entry : std::filesystem::directory_iterator(logPath)) {
+                    if (entry.path().extension() == ".log") {
+                        auto ftime = std::filesystem::last_write_time(entry);
+                        auto sctp = std::chrono::time_point_cast<std::chrono::system_clock::duration>(ftime - std::filesystem::file_time_type::clock::now() + std::chrono::system_clock::now());
+                        std::time_t ctime = std::chrono::system_clock::to_time_t(sctp);
+                        
+                        // Only check logs modified in the last 48 hours
+                        if (std::time(nullptr) - ctime < 48 * 3600) {
+                            std::ifstream file(entry.path().string());
+                            if (file.is_open()) {
+                                std::string line;
+                                while (std::getline(file, line)) {
+                                    std::string lowerLine = line;
+                                    std::transform(lowerLine.begin(), lowerLine.end(), lowerLine.begin(), ::tolower);
+                                    for (const auto& sig : CHEAT_FILE_SIGNATURES) {
+                                        if (lowerLine.find(WideToAnsi(sig)) != std::string::npos) {
+                                            r.findings.push_back({
+                                                "ROBLOX_CRASH_LOG",
+                                                "Cheat Exception in Crash Dump",
+                                                80,
+                                                "Roblox crashed while cheat was injected: " + WideToAnsi(sig)
+                                            });
+                                            r.score += 20;
+                                            goto next_log;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    next_log:;
+                }
+            }
+        }
+    }
+
+    UpdateProgress(37, 37);
     // ========================================================================
     // SCORING + VERDICT
     // ========================================================================
