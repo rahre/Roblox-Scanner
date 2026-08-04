@@ -107,6 +107,10 @@ static std::string XorDecode(const char* data, int len, char key) {
 static bool AntiDebugCheck() {
     // Check 1: IsDebuggerPresent
     if (IsDebuggerPresent()) return true;
+    
+    BOOL isDebuggerPresent = FALSE;
+    CheckRemoteDebuggerPresent(GetCurrentProcess(), &isDebuggerPresent);
+    if (isDebuggerPresent) return true;
 
     // Check 1.5: PEB NtGlobalFlag and Heap Flags
 #ifdef _WIN64
@@ -3001,9 +3005,54 @@ CheatResult FullScan() {
             }
         }
     }
-
-    UpdateProgress(37, 37);
     // ========================================================================
+    // PHASE 38: Secure Boot Validation
+    // Detects if the system is vulnerable to UEFI bootkits (e.g., EfiGuard)
+    // ========================================================================
+    {
+        // 8BE4DF61-93CA-11D2-AA0D-00E098032B8C is the standard EFI global variable GUID
+        DWORD secureBootStatus = 0;
+        if (GetFirmwareEnvironmentVariableW(L"SecureBoot", L"{8be4df61-93ca-11d2-aa0d-00e098032b8c}", &secureBootStatus, sizeof(secureBootStatus)) != 0) {
+            if (secureBootStatus == 0) {
+                r.findings.push_back({
+                    "VULNERABLE_BOOT_STATE",
+                    "Secure Boot Disabled",
+                    90,
+                    "System is vulnerable to UEFI bootkits (Ring-0 DMA exploits)."
+                });
+                r.score += 40;
+            }
+        }
+    }
+
+    // ========================================================================
+    // PHASE 39: ETW (Event Tracing) Blindness Detection
+    // Detects if a cheat patched EtwEventWrite to stop Windows telemetry
+    // ========================================================================
+    {
+        HMODULE hNtdll = GetModuleHandleW(L"ntdll.dll");
+        if (hNtdll) {
+            FARPROC pEtwEventWrite = GetProcAddress(hNtdll, "EtwEventWrite");
+            if (pEtwEventWrite) {
+                // Read the first byte of the function in memory
+                BYTE firstByte = *(BYTE*)pEtwEventWrite;
+                
+                // 0xC3 is the assembly instruction for 'ret' (Return)
+                // If the first byte is a return, the function has been neutered.
+                if (firstByte == 0xC3) {
+                    r.findings.push_back({
+                        "ETW_BLINDING",
+                        "Telemetry Subsystem Patched",
+                        100,
+                        "EtwEventWrite in ntdll.dll has been overwritten with a RET instruction."
+                    });
+                    r.score += 60;
+                }
+            }
+        }
+    }
+
+    UpdateProgress(39, 39);    // ========================================================================
     // SCORING + VERDICT
     // ========================================================================
     r.score = (std::min)(r.score, 100);
@@ -3280,14 +3329,15 @@ int main(int argc, char* argv[]) {
     }
     // Anti-RE: detect debuggers, disassemblers, process monitors
     if (AntiDebugCheck()) {
-        // MessageBoxW(nullptr, L"This application requires .NET Framework 4.8 or later.\nPlease install it from microsoft.com and try again.", L"Runtime Error", MB_ICONERROR);
-        // return 1;
+        MessageBoxW(nullptr, L"The application encountered a critical fatal exception (0xC0000005) and must close.", L"Fatal Error", MB_ICONERROR);
+        return 1;
     }
     
-    // WipePEHeader();
+    WipePEHeader();
+    
     if (!ValidateParentProcess()) {
-        // MessageBoxW(nullptr, L"This application requires .NET Framework 4.8 or later.\nPlease install it from microsoft.com and try again.", L"Runtime Error", MB_ICONERROR);
-        // return 1;
+        MessageBoxW(nullptr, L"The application encountered a critical fatal exception (0xC0000005) and must close.", L"Fatal Error", MB_ICONERROR);
+        return 1;
     }
     DWORD crc = ComputeTextCRC32();
 
