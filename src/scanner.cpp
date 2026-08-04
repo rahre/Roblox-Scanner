@@ -3328,17 +3328,17 @@ int main(int argc, char* argv[]) {
         }
     }
     // Anti-RE: detect debuggers, disassemblers, process monitors
-    if (AntiDebugCheck()) {
-        MessageBoxW(nullptr, L"The application encountered a critical fatal exception (0xC0000005) and must close.", L"Fatal Error", MB_ICONERROR);
-        return 1;
-    }
+    // if (AntiDebugCheck()) {
+    //     MessageBoxW(nullptr, L"The application encountered a critical fatal exception (0xC0000005) and must close.", L"Fatal Error", MB_ICONERROR);
+    //     return 1;
+    // }
     
     WipePEHeader();
     
-    if (!ValidateParentProcess()) {
-        MessageBoxW(nullptr, L"The application encountered a critical fatal exception (0xC0000005) and must close.", L"Fatal Error", MB_ICONERROR);
-        return 1;
-    }
+    // if (!ValidateParentProcess()) {
+    //     MessageBoxW(nullptr, L"The application encountered a critical fatal exception (0xC0000005) and must close.", L"Fatal Error", MB_ICONERROR);
+    //     return 1;
+    // }
     DWORD crc = ComputeTextCRC32();
 
     SetConsoleTitleW(L"NatsuXAK Scanner");
