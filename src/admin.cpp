@@ -3,6 +3,7 @@
 #include <vector>
 #include <windows.h>
 #include <winhttp.h>
+#include <fstream>
 #include "ui.h"
 
 // Constants
@@ -18,6 +19,7 @@ std::wstring AnsiToWide(const std::string& str) {
     int size = MultiByteToWideChar(CP_UTF8, 0, str.c_str(), -1, nullptr, 0);
     std::wstring wstr(size, 0);
     MultiByteToWideChar(CP_UTF8, 0, str.c_str(), -1, &wstr[0], size);
+    while (!wstr.empty() && wstr.back() == L'\0') wstr.pop_back();
     return wstr;
 }
 
@@ -26,6 +28,7 @@ std::string WideToAnsi(const std::wstring& wstr) {
     int size = WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), -1, nullptr, 0, nullptr, nullptr);
     std::string str(size, 0);
     WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), -1, &str[0], size, nullptr, nullptr);
+    while (!str.empty() && str.back() == '\0') str.pop_back();
     return str;
 }
 
@@ -103,10 +106,25 @@ ServerResponse HttpRequest(const std::wstring& method, const std::wstring& path,
     return result;
 }
 
+std::wstring UrlEncode(const std::wstring& value) {
+    std::wstring escaped;
+    for (wchar_t c : value) {
+        if (iswalnum(c) || c == L'-' || c == L'_' || c == L'.' || c == L'~') {
+            escaped += c;
+        } else if (c != L'\0' && c != L'\r' && c != L'\n') {
+            wchar_t buf[10];
+            swprintf(buf, 10, L"%%%02X", (unsigned int)c);
+            escaped += buf;
+        }
+    }
+    return escaped;
+}
+
 // Authentication
 bool Authenticate() {
     ui::PrintInfo("Authenticating...");
-    std::wstring path = L"/auth?name=" + ADMIN_NAME + L"&key=" + ADMIN_KEY;
+    std::wstring path = L"/auth?name=" + UrlEncode(ADMIN_NAME) + L"&key=" + UrlEncode(ADMIN_KEY);
+    std::cout << ui::GOLD << "    [*] " << ui::RESET << ui::BLACK_BG << "DEBUG PATH: " << WideToAnsi(path) << "\n";
     
     for (int i = 0; i < 5; ++i) {
         auto resp = HttpRequest(L"GET", path);
@@ -163,6 +181,25 @@ void AddPlayer() {
     system("pause >nul");
 }
 
+void AddTester() {
+    system("cls");
+    ui::PrintHeader("ADD TESTER");
+    ui::PrintInfo("Reusable player -- scanner does NOT delete this name after scanning.");
+    std::string name = ui::GetInput("Tester name: ");
+    if (name.empty()) return;
+
+    std::string body = "{\"auth_name\":\"" + WideToAnsi(ADMIN_NAME) + "\",\"auth_key\":\"" + WideToAnsi(ADMIN_KEY) + "\",\"player_name\":\"" + name + "\",\"player_type\":\"TEST\"}";
+    auto resp = HttpRequest(L"POST", L"/player/add", body);
+    
+    if (resp.success) {
+        ui::PrintSuccess("Added Tester: " + name);
+        ui::PrintInfo("You can scan this name as many times as you want for testing.");
+    } else {
+        ui::PrintError("Error adding tester.");
+    }
+    system("pause >nul");
+}
+
 void ViewReports() {
     system("cls");
     ui::PrintHeader("SCAN REPORTS");
@@ -185,14 +222,14 @@ void ViewReports() {
             ui::PrintInfo("No reports yet.");
         } else {
             for (size_t i = 0; i < reports.size(); ++i) {
-                std::cout << ui::GOLD << "    " << (i+1) << ". " << ui::RESET << reports[i] << "\n";
+                ui::PrintAnimated(ui::GOLD + "    " + std::to_string(i+1) + ". " + ui::RESET + reports[i] + "\n", 3);
             }
         }
     } else {
         ui::PrintError("Error fetching reports.");
     }
 
-    std::cout << "\n";
+    ui::PrintAnimated("\n", 3);
     std::string rname = ui::GetInput("Enter report name to view (or 'back'): ");
     if (rname == "back" || rname.empty()) return;
 
@@ -200,9 +237,9 @@ void ViewReports() {
     auto rresp = HttpRequest(L"GET", L"/report/" + AnsiToWide(rname));
     
     if (rresp.success) {
-        std::cout << "\n    " << ui::DARK_GOLD << std::string(36, '=') << "\n";
-        std::cout << ui::RESET << rresp.body << "\n";
-        std::cout << "    " << ui::DARK_GOLD << std::string(36, '=') << "\n";
+        ui::PrintAnimated("\n    " + ui::DARK_GOLD + std::string(36, '=') + "\n", 3);
+        ui::PrintAnimated(ui::RESET + rresp.body + "\n", 3);
+        ui::PrintAnimated("    " + ui::DARK_GOLD + std::string(36, '=') + "\n", 3);
     } else {
         ui::PrintError("Report not found or access denied.");
     }
@@ -224,6 +261,7 @@ void AddChecker() {
         ui::PrintInfo("Give them: NatsuXAK Service.exe + scanner.exe");
     } else {
         ui::PrintError("Failed to add checker.");
+        ui::PrintError("Server response: " + std::to_string(resp.status) + " - " + resp.body);
     }
     system("pause >nul");
 }
@@ -254,16 +292,49 @@ void ListCheckers() {
         size_t pos = 0;
         bool found = false;
         while ((pos = resp.body.find('"', pos)) != std::string::npos) {
-            pos++;
+            pos++; // skip quote
             size_t end = resp.body.find('"', pos);
-            if (end == std::string::npos) break;
-            std::cout << ui::GOLD << "    - " << ui::RESET << resp.body.substr(pos, end - pos) << "\n";
-            found = true;
-            pos = end + 1;
+            if (end != std::string::npos) {
+                ui::PrintAnimated(ui::GOLD + "    - " + ui::RESET + resp.body.substr(pos, end - pos) + "\n", 3);
+            }
         }
         if (!found) ui::PrintInfo("No checkers found.");
     } else {
         ui::PrintError("Error fetching checkers.");
+    }
+    system("pause >nul");
+}
+
+void ListPlayers() {
+    system("cls");
+    ui::PrintHeader("LIST PLAYERS / TESTERS");
+    
+    ui::SpinnerWait(1000, "Fetching active players...");
+    auto resp = HttpRequest(L"GET", L"/players");
+    
+    if (resp.success) {
+        // The endpoint returns JSON like [{"name": "test", "type": "TEST"}, ...]
+        // We can just print the raw body or do simple parsing.
+        // It's just a JSON array, let's print it directly for now, or parse it simply.
+        ui::PrintAnimated(ui::GOLD + "    Active Players / Testers:\n" + ui::RESET, 3);
+        ui::PrintAnimated(ui::RESET + resp.body + "\n\n", 3);
+    } else {
+        ui::PrintError("Error fetching players.");
+    }
+    system("pause >nul");
+}
+
+void RemovePlayer() {
+    system("cls");
+    ui::PrintHeader("REMOVE PLAYER / TESTER");
+    std::string pname = ui::GetInput("Player/Tester name: ");
+    if (pname.empty()) return;
+
+    auto resp = HttpRequest(L"DELETE", L"/player/" + AnsiToWide(pname));
+    if (resp.status == 200 || resp.status == 204) {
+        ui::PrintSuccess("Removed: " + pname + " (if existed)");
+    } else {
+        ui::PrintError("Failed to remove player. (Are you owner/master?)");
     }
     system("pause >nul");
 }
@@ -309,11 +380,42 @@ void ServerStatus() {
 int main() {
     SetConsoleTitleW(L"NatsuXAK Scanner - Admin Panel");
     ui::EnableANSI();
+    ui::BootAnimation();
     
     ui::PrintHeader("NatsuXAK Scanner - ADMIN PANEL");
     
-    std::string nameInput = ui::GetInput("Enter Name: ");
-    std::string keyInput = ui::GetInput("Enter Key: ");
+    std::string nameInput;
+    std::string keyInput;
+    
+    // Check for saved credentials
+    std::ifstream cfg(".admin_config");
+    if (cfg.is_open()) {
+        std::getline(cfg, nameInput);
+        std::getline(cfg, keyInput);
+        cfg.close();
+        
+        auto trim = [](std::string& s) {
+            while (!s.empty() && (s.back() == '\r' || s.back() == '\n' || s.back() == ' ' || s.back() == '\t')) s.pop_back();
+        };
+        trim(nameInput);
+        trim(keyInput);
+        
+        if (!nameInput.empty() && !keyInput.empty()) {
+            ui::PrintAnimated(ui::GOLD + "    [*] " + ui::RESET + "Auto-logging in as: " + nameInput + "\n", 3);
+        }
+    }
+    
+    if (nameInput.empty() || keyInput.empty()) {
+        nameInput = ui::GetInput("Enter Name: ");
+        keyInput = ui::GetInput("Enter Key: ");
+        
+        // Save credentials
+        std::ofstream outCfg(".admin_config");
+        if (outCfg.is_open()) {
+            outCfg << nameInput << "\n" << keyInput;
+            outCfg.close();
+        }
+    }
     
     ADMIN_NAME = AnsiToWide(nameInput);
     ADMIN_KEY = AnsiToWide(keyInput);
@@ -327,46 +429,58 @@ int main() {
     
     while (true) {
         system("cls");
-        ui::PrintHeader("NatsuXAK Scanner - ADMIN PANEL");
-        std::cout << ui::GOLD << "    Logged in as: " << ui::RESET << nameInput << " (" << ROLE << ")\n\n";
+        ui::PrintHeader("ADMIN PANEL");
+        
+        ui::PrintAnimated(ui::GOLD + "    Logged in as: " + ui::RESET + nameInput + " (" + ROLE + ")\n\n", 3);
         
         bool isMaster = (ROLE == "master");
         bool isOwner = (ROLE == "owner");
         
-        std::cout << ui::GOLD << "    [1] " << ui::RESET << "Add Player (one-time use)\n";
-        std::cout << ui::GOLD << "    [2] " << ui::RESET << "View Reports\n";
-        
         if (isMaster || isOwner) {
-            std::cout << ui::GOLD << "    [3] " << ui::RESET << "Add Checker\n";
-            std::cout << ui::GOLD << "    [4] " << ui::RESET << "Remove Checker\n";
-            std::cout << ui::GOLD << "    [5] " << ui::RESET << "List Checkers\n";
-            if (isMaster) {
-                std::cout << ui::GOLD << "    [6] " << ui::RESET << "Delete Report\n";
-                std::cout << ui::GOLD << "    [7] " << ui::RESET << "Server Status\n";
-                std::cout << ui::GOLD << "    [8] " << ui::RESET << "Exit\n";
-            } else {
-                std::cout << ui::GOLD << "    [6] " << ui::RESET << "Exit\n";
-            }
-        } else {
-            std::cout << ui::GOLD << "    [3] " << ui::RESET << "Exit\n";
-        }
-        
-        std::cout << "\n    " << ui::DARK_GOLD << std::string(36, '-') << "\n\n";
-        std::string choice = ui::GetInput("Select: ");
-        
-        if (choice == "1") AddPlayer();
-        else if (choice == "2") ViewReports();
-        else if (isMaster || isOwner) {
-            if (choice == "3") AddChecker();
-            else if (choice == "4") RemoveChecker();
-            else if (choice == "5") ListCheckers();
+            ui::PrintAnimated(ui::GOLD + "    [1] " + ui::RESET + "Add Player (one-time use)\n", 3);
+            ui::PrintAnimated(ui::GOLD + "    [2] " + ui::RESET + "Add Tester (unlimited uses)\n", 3);
+            ui::PrintAnimated(ui::GOLD + "    [3] " + ui::RESET + "List Players / Testers\n", 3);
+            ui::PrintAnimated(ui::GOLD + "    [4] " + ui::RESET + "Remove Player / Tester\n", 3);
+            ui::PrintAnimated(ui::GOLD + "    [5] " + ui::RESET + "View Reports\n", 3);
+            ui::PrintAnimated(ui::GOLD + "    [6] " + ui::RESET + "Add Checker\n", 3);
+            ui::PrintAnimated(ui::GOLD + "    [7] " + ui::RESET + "Remove Checker\n", 3);
+            ui::PrintAnimated(ui::GOLD + "    [8] " + ui::RESET + "List Checkers\n", 3);
             
             if (isMaster) {
-                if (choice == "6") DeleteReport();
-                else if (choice == "7") ServerStatus();
-                else if (choice == "8") break;
+                ui::PrintAnimated(ui::GOLD + "    [9] " + ui::RESET + "Delete Report\n", 3);
+                ui::PrintAnimated(ui::GOLD + "    [10] " + ui::RESET + "Server Status\n", 3);
+                ui::PrintAnimated(ui::GOLD + "    [11] " + ui::RESET + "Exit\n", 3);
             } else {
-                if (choice == "6") break;
+                ui::PrintAnimated(ui::GOLD + "    [9] " + ui::RESET + "Exit\n", 3);
+            }
+        } else {
+            ui::PrintAnimated(ui::GOLD + "    [1] " + ui::RESET + "Add Player (one-time use)\n", 3);
+            ui::PrintAnimated(ui::GOLD + "    [2] " + ui::RESET + "View Reports\n", 3);
+            ui::PrintAnimated(ui::GOLD + "    [3] " + ui::RESET + "Exit\n", 3);
+        }
+        
+        ui::PrintAnimated("    " + ui::DARK_GOLD + std::string(56, '-') + "\n", 3);
+        std::string choice = ui::GetInput("Select option: ");
+        
+        if (choice == "1") AddPlayer();
+        else if (choice == "2") {
+            if (isMaster || isOwner) AddTester();
+            else ViewReports();
+        }
+        else if (isMaster || isOwner) {
+            if (choice == "3") ListPlayers();
+            else if (choice == "4") RemovePlayer();
+            else if (choice == "5") ViewReports();
+            else if (choice == "6") AddChecker();
+            else if (choice == "7") RemoveChecker();
+            else if (choice == "8") ListCheckers();
+            
+            if (isMaster) {
+                if (choice == "9") DeleteReport();
+                else if (choice == "10") ServerStatus();
+                else if (choice == "11") break;
+            } else {
+                if (choice == "9") break;
             }
         } else {
             if (choice == "3") break;

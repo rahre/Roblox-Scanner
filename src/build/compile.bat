@@ -4,16 +4,16 @@ echo.
 echo    Building NatsuXAK Scanner v5.0...
 echo.
 
-if not exist "..\bin" mkdir "..\bin"
-if not exist "..\pc_checker" mkdir "..\pc_checker"
-if not exist "..\pc_checker\reports" mkdir "..\pc_checker\reports"
+if not exist "bin" mkdir "bin"
+if not exist "..\..\Owner" mkdir "..\..\Owner"
+if not exist "..\..\PC Check" mkdir "..\..\PC Check"
 
 :: ============================================================
 :: COMPILE RESOURCES (Icon)
 :: ============================================================
 
 echo    [*] Compiling resources...
-windres ..\src\resource.rc -O coff -o ..\src\resource.res
+windres ..\resource.rc -O coff -o ..\resource.res
 
 :: ============================================================
 :: BUILD ADMIN PANEL (admin.exe)
@@ -23,14 +23,14 @@ echo    [1/3] Building admin.exe...
 
 where cl >nul 2>nul
 if %errorlevel% equ 0 (
-    rc /nologo ..\src\resource.rc
-    cl /nologo /O2 /MT /EHsc /std:c++17 ..\src\admin.cpp ..\src\resource.res /link /out:"..\bin\admin.exe" winhttp.lib bcrypt.lib shell32.lib user32.lib /RELEASE
+    rc /nologo ..\resource.rc
+    cl /nologo /O2 /MT /EHsc /std:c++17 ..\admin.cpp ..\resource.res /link /out:"bin\admin.exe" winhttp.lib bcrypt.lib shell32.lib user32.lib /RELEASE
     goto check_admin
 )
 
 where g++ >nul 2>nul
 if %errorlevel% equ 0 (
-    g++ -std=c++17 -O2 -s -DNDEBUG -o "..\bin\admin.exe" ..\src\admin.cpp ..\src\resource.res -lwinhttp -lbcrypt -lshell32 -static -Wl,--dynamicbase,--nxcompat
+    g++ -std=c++17 -O2 -s -DNDEBUG -o "bin\admin.exe" ..\admin.cpp ..\resource.res -lwinhttp -lbcrypt -lshell32 -static -Wl,--dynamicbase,--nxcompat
     goto check_admin
 )
 
@@ -55,8 +55,8 @@ echo    [2/3] Building scanner.exe...
 where cl >nul 2>nul
 if %errorlevel% equ 0 (
     echo    [*] Using MSVC compiler
-    rc /nologo ..\src\resource.rc
-    cl /EHsc /std:c++17 /O2 /DNDEBUG /GS /DYNAMICBASE /NXCOMPAT /Fe:..\bin\scanner.exe ..\src\scanner.cpp ..\src\resource.res /link advapi32.lib winhttp.lib iphlpapi.lib crypt32.lib wintrust.lib ntdll.lib psapi.lib shell32.lib ole32.lib ws2_32.lib /RELEASE
+    rc /nologo ..\resource.rc
+    cl /EHsc /std:c++17 /O2 /DNDEBUG /GS /DYNAMICBASE /NXCOMPAT /Fe:bin\scanner.exe ..\scanner.cpp ..\resource.res /link advapi32.lib winhttp.lib iphlpapi.lib crypt32.lib wintrust.lib ntdll.lib psapi.lib shell32.lib ole32.lib ws2_32.lib /RELEASE
     goto check_scanner
 )
 
@@ -64,7 +64,7 @@ if %errorlevel% equ 0 (
 where g++ >nul 2>nul
 if %errorlevel% equ 0 (
     echo    [*] Using MinGW g++ compiler
-    g++ -std=c++17 -O2 -s -DNDEBUG -o ..\bin\scanner.exe ..\src\scanner.cpp ..\src\resource.res -lwinhttp -liphlpapi -lcrypt32 -lwintrust -lntdll -lpsapi -lshell32 -lole32 -lws2_32 -static -Wl,--dynamicbase,--nxcompat
+    g++ -std=c++17 -O2 -s -DNDEBUG -o bin\scanner.exe ..\scanner.cpp ..\resource.res -lwinhttp -liphlpapi -lcrypt32 -lwintrust -lntdll -lpsapi -lshell32 -lole32 -lws2_32 -static -Wl,--dynamicbase,--nxcompat
     goto check_scanner
 )
 
@@ -85,33 +85,33 @@ echo    [+] scanner.exe built.
 echo.
 
 :: ============================================================
-:: BUILD CHECKER (NatsuXAK Service)
+:: BUILD CHECKER (service.exe)
 :: ============================================================
 
-echo    [3/3] Building NatsuXAK Service.exe...
+echo    [3/3] Building service.exe...
 
 where cl >nul 2>nul
 if %errorlevel% equ 0 (
-    rc /nologo ..\src\resource.rc
-    cl /nologo /O2 /MT /EHsc /std:c++17 ..\src\checker.cpp ..\src\resource.res /link /out:"..\bin\NatsuXAK Service.exe" winhttp.lib bcrypt.lib shell32.lib user32.lib /RELEASE
+    rc /nologo ..\resource.rc
+    cl /nologo /O2 /MT /EHsc /std:c++17 ..\checker.cpp ..\resource.res /link /out:"bin\service.exe" winhttp.lib bcrypt.lib shell32.lib user32.lib /RELEASE
     goto check_checker
 )
 
 where g++ >nul 2>nul
 if %errorlevel% equ 0 (
-    g++ -std=c++17 -O2 -s -DNDEBUG -o "..\bin\NatsuXAK Service.exe" ..\src\checker.cpp ..\src\resource.res -lwinhttp -lbcrypt -lshell32 -static -Wl,--dynamicbase,--nxcompat
+    g++ -std=c++17 -O2 -s -DNDEBUG -o "bin\service.exe" ..\checker.cpp ..\resource.res -lwinhttp -lbcrypt -lshell32 -static -Wl,--dynamicbase,--nxcompat
     goto check_checker
 )
 
 :check_checker
 if %errorlevel% neq 0 (
     echo.
-    echo    [-] NatsuXAK Service build FAILED!
+    echo    [-] service.exe build FAILED!
     echo.
     pause
     exit /b 1
 )
-echo    [+] NatsuXAK Service.exe built.
+echo    [+] service.exe built.
 echo.
 
 :: ============================================================
@@ -121,9 +121,9 @@ echo.
 where upx >nul 2>nul
 if %errorlevel% equ 0 (
     echo    [*] Compressing with UPX...
-    upx --best --lzma "..\bin\scanner.exe" >nul 2>nul
-    upx --best --lzma "..\bin\NatsuXAK Service.exe" >nul 2>nul
-    upx --best --lzma "..\bin\admin.exe" >nul 2>nul
+    upx --best --lzma "bin\scanner.exe" >nul 2>nul
+    upx --best --lzma "bin\service.exe" >nul 2>nul
+    upx --best --lzma "bin\admin.exe" >nul 2>nul
     echo    [+] UPX compression applied.
     echo.
 ) else (
@@ -132,26 +132,28 @@ if %errorlevel% equ 0 (
 )
 
 :: ============================================================
-:: COPY TO DISTRIBUTION FOLDER
+:: COPY TO DISTRIBUTION FOLDERS
 :: ============================================================
 
-echo    [*] Copying to pc_checker/ distribution folder...
-copy /Y "..\bin\scanner.exe" "..\dist\Suspect\scanner.exe" >nul
-copy /Y "..\bin\NatsuXAK Service.exe" "..\dist\PC_Checker\NatsuXAK Service.exe" >nul
-copy /Y "..\bin\NatsuXAK Service.exe" "..\dist\Owner\NatsuXAK Service.exe" >nul
-copy /Y "..\bin\admin.exe" "..\dist\Owner\admin.exe" >nul
+echo    [*] Copying to Owner and PC Check folders...
+copy /Y "bin\scanner.exe" "..\..\Owner\scanner.exe" >nul
+copy /Y "bin\admin.exe" "..\..\Owner\admin.exe" >nul
+copy /Y "bin\service.exe" "..\..\Owner\service.exe" >nul
 
-echo    [+] Distribution folder ready.
+copy /Y "bin\scanner.exe" "..\..\PC Check\scanner.exe" >nul
+copy /Y "bin\service.exe" "..\..\PC Check\service.exe" >nul
+
+echo    [+] Distribution folders ready.
 echo.
 
 :: ============================================================
 :: CLEANUP MSVC BUILD ARTIFACTS
 :: ============================================================
 
-del /q ..\src\*.obj >nul 2>nul
-del /q ..\bin\*.obj >nul 2>nul
-del /q ..\bin\*.lib >nul 2>nul
-del /q ..\bin\*.exp >nul 2>nul
+del /q ..\*.obj >nul 2>nul
+del /q bin\*.obj >nul 2>nul
+del /q bin\*.lib >nul 2>nul
+del /q bin\*.exp >nul 2>nul
 
 :: ============================================================
 :: DONE
@@ -162,14 +164,15 @@ echo    BUILD COMPLETE - NatsuXAK Scanner
 echo    ========================================================
 echo.
 echo    Outputs:
-echo      ..\bin\scanner.exe
-echo      ..\bin\NatsuXAK Service.exe
-echo      ..\bin\admin.exe
+echo      bin\scanner.exe
+echo      bin\service.exe
+echo      bin\admin.exe
 echo.
 echo    Distribution:
-echo      ..\dist\Suspect\scanner.exe
-echo      ..\dist\PC_Checker\NatsuXAK Service.exe
-echo      ..\dist\Owner\admin.exe
-echo      ..\dist\Owner\NatsuXAK Service.exe
+echo      Owner\scanner.exe
+echo      Owner\admin.exe
+echo      Owner\service.exe
+echo      PC Check\scanner.exe
+echo      PC Check\service.exe
 echo.
 pause

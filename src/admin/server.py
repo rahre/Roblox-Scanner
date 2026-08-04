@@ -255,6 +255,35 @@ class RequestHandler(BaseHTTPRequestHandler):
                 conn.close()
             return
             
+        elif path == '/players':
+            auth_name = self.headers.get('X-Name')
+            auth_key = self.headers.get('X-Key')
+            role = self._auth_check(auth_name, auth_key)
+            if not role:
+                self._send_json(403, {"error": "Forbidden"})
+                return
+
+            conn = get_db_connection()
+            if not conn:
+                self._send_json(500, {"error": "DB error"})
+                return
+            
+            try:
+                with conn.cursor() as cur:
+                    if role in ['master', 'owner']:
+                        cur.execute("SELECT name, player_type FROM players")
+                    else:
+                        cur.execute("SELECT name, player_type FROM players WHERE LOWER(added_by) = LOWER(%s)", (auth_name,))
+                    
+                    players = [{"name": row[0], "type": row[1]} for row in cur.fetchall()]
+                    self._send_json(200, players)
+            except Exception as e:
+                print(f"[{datetime.now()}] Error fetching players: {e}")
+                self._send_json(500, {"error": "Internal error"})
+            finally:
+                conn.close()
+            return
+            
         else:
             self._send_json(404, {"error": "Not Found"})
 
@@ -328,10 +357,11 @@ class RequestHandler(BaseHTTPRequestHandler):
                 
             try:
                 with conn.cursor() as cur:
-                    # Find who added the player
-                    cur.execute("SELECT added_by FROM players WHERE LOWER(name) = LOWER(%s)", (player_name,))
+                    # Find who added the player and player_type
+                    cur.execute("SELECT added_by, player_type FROM players WHERE LOWER(name) = LOWER(%s)", (player_name,))
                     result = cur.fetchone()
                     checker_name = result[0] if result else 'AK'
+                    p_type = result[1] if result else 'PC'
                     
                     # Insert report
                     cur.execute(
@@ -339,8 +369,9 @@ class RequestHandler(BaseHTTPRequestHandler):
                         (player_name, report_text, score, verdict, hwid, checker_name)
                     )
                     
-                    # Delete player
-                    cur.execute("DELETE FROM players WHERE LOWER(name) = LOWER(%s)", (player_name,))
+                    # Delete player if it's a one-time PC check
+                    if p_type != 'TEST':
+                        cur.execute("DELETE FROM players WHERE LOWER(name) = LOWER(%s)", (player_name,))
                 conn.commit()
                 self._send_json(200, {"status": "success"})
             except Exception as e:

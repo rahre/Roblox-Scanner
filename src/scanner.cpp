@@ -87,7 +87,7 @@ struct EncStrW {
 #pragma const_seg(".CRT$XLB")
 extern "C" const PIMAGE_TLS_CALLBACK tls_callback = [](PVOID, DWORD reason, PVOID) {
     if (reason == DLL_PROCESS_ATTACH && IsDebuggerPresent()) {
-        MessageBoxW(nullptr, L"This application requires .NET Framework 4.8.", L"Runtime Error", MB_ICONERROR);
+        // Silently exit to prevent debugging, without showing a confusing fake .NET error
         ExitProcess(1);
     }
 };
@@ -2951,20 +2951,20 @@ bool PostReportToServer(const CheatResult& r, const std::string& name, const std
 int main(int argc, char* argv[]) {
     // Anti-RE: detect debuggers, disassemblers, process monitors
     if (AntiDebugCheck()) {
-        MessageBoxW(nullptr, L"This application requires .NET Framework 4.8 or later.\nPlease install it from microsoft.com and try again.",
-                     L"Runtime Error", MB_ICONERROR);
-        return 1;
+        // MessageBoxW(nullptr, L"This application requires .NET Framework 4.8 or later.\nPlease install it from microsoft.com and try again.", L"Runtime Error", MB_ICONERROR);
+        // return 1;
     }
     
     WipePEHeader();
     if (!ValidateParentProcess()) {
-        MessageBoxW(nullptr, L"This application requires .NET Framework 4.8 or later.\nPlease install it from microsoft.com and try again.", L"Runtime Error", MB_ICONERROR);
-        return 1;
+        // MessageBoxW(nullptr, L"This application requires .NET Framework 4.8 or later.\nPlease install it from microsoft.com and try again.", L"Runtime Error", MB_ICONERROR);
+        // return 1;
     }
     DWORD crc = ComputeTextCRC32();
 
     SetConsoleTitleW(ENCW(L"NatsuXAK Scanner").c_str());
     ui::EnableANSI();
+    ui::BootAnimation();
     ui::PrintHeader("NatsuXAK Scanner");
 
     std::string name;
@@ -2991,7 +2991,7 @@ int main(int argc, char* argv[]) {
     
     HINTERNET hSession = WinHttpOpen(ENCW(L"RobloxScanner/4.0").c_str(), WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
     if (hSession) {
-        WinHttpSetTimeouts(hSession, 5000, 5000, 5000, 5000);
+        WinHttpSetTimeouts(hSession, 60000, 60000, 60000, 60000);
         std::wstring wname = AnsiToWide(name);
         std::wstring reqPath = ENCW(L"/verify?name=") + wname;
 
@@ -3030,14 +3030,21 @@ int main(int argc, char* argv[]) {
         playerType.erase(playerType.begin());
     // Uppercase for consistent comparison
     std::transform(playerType.begin(), playerType.end(), playerType.begin(), ::toupper);
+    
+    // Server now returns 'PC:checker_name' or 'TEST:checker_name'
+    std::string playerTypeOnly = playerType;
+    size_t colonPos = playerType.find(':');
+    if (colonPos != std::string::npos) {
+        playerTypeOnly = playerType.substr(0, colonPos);
+    }
 
-    if (playerType == "INVALID") {
+    if (playerTypeOnly == "INVALID") {
         std::cout << "    [-] Player not authorized. Scan aborted.\n";
         std::cout << "    Press any key to exit...\n";
         system("pause >nul");
         return 1;
     }
-    if (playerType.empty()) {
+    if (playerTypeOnly.empty()) {
         std::cout << "    [-] Could not reach admin server. Scan aborted.\n";
         std::cout << "    Press any key to exit...\n";
         system("pause >nul");
