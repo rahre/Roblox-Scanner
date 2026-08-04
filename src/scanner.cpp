@@ -1683,7 +1683,7 @@ CheatResult FullScan() {
                         "MUICACHE",
                         WideToAnsi(vn),
                         80,
-                        "[Unknown Age] Windows MuiCache — program was opened on this PC"
+                        "[Unknown Age] Windows MuiCache - program was opened on this PC"
                     });
                     r.score += 25;
                 }
@@ -1715,7 +1715,7 @@ CheatResult FullScan() {
                         "APPCOMPAT",
                         WideToAnsi(vn),
                         85,
-                        "[Unknown Age] AppCompat registry — program was executed"
+                        "[Unknown Age] AppCompat registry - program was executed"
                     });
                     r.score += 25;
                 }
@@ -1751,7 +1751,7 @@ CheatResult FullScan() {
                             "UNINSTALL_REGISTRY",
                             WideToAnsi(sk),
                             75,
-                            "[Unknown Age] Uninstall registry — cheat was installed"
+                            "[Unknown Age] Uninstall registry - cheat was installed"
                         });
                         r.score += 20;
                     }
@@ -2379,7 +2379,7 @@ CheatResult FullScan() {
                                 "DUAL_PC_STREAMING",
                                 WideToAnsi(pe.szExeFile),
                                 70,
-                                "Remote streaming software running — possible dual-PC cheat setup"
+                                "Remote streaming software running - possible dual-PC cheat setup"
                             });
                             r.score += 20;
                             break;
@@ -2415,15 +2415,15 @@ CheatResult FullScan() {
                 CloseHandle(pi2.hProcess);
                 CloseHandle(pi2.hThread);
 
-                // Check for Parsec (8000), Moonlight (47984-47989), Sunshine (47989-47990)
-                const char* streamPorts[] = {":8000 ", ":47984 ", ":47985 ", ":47986 ", ":47987 ", ":47988 ", ":47989 ", ":47990 ", nullptr};
+                // Check for Moonlight (47984-47989), Sunshine (47989-47990). Removed Parsec (8000) as it is too generic.
+                const char* streamPorts[] = {":47984 ", ":47985 ", ":47986 ", ":47987 ", ":47988 ", ":47989 ", ":47990 ", nullptr};
                 for (int i = 0; streamPorts[i]; i++) {
                     if (netOutput.find(streamPorts[i]) != std::string::npos) {
                         r.findings.push_back({
                             "STREAMING_PORT",
                             streamPorts[i],
                             70,
-                            "Active streaming port detected — dual-PC setup indicator"
+                            "Active streaming port detected - dual-PC setup indicator"
                         });
                         r.score += 15;
                         break;
@@ -2524,7 +2524,7 @@ CheatResult FullScan() {
                             "AMCACHE",
                             WideToAnsi(keyName),
                             85,
-                            "Amcache/AppCompat — cheat execution recorded"
+                            "Amcache/AppCompat - cheat execution recorded"
                         });
                         r.score += 30;
                     }
