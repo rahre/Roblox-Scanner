@@ -2888,6 +2888,7 @@ void ShowResult(const CheatResult& r, const std::string& name, const std::string
                     
                     std::cout << "      " << conf << ui::RESET << " " << f.description << "\n";
                     if (!f.evidence.empty()) std::cout << "          " << ui::DARK_GOLD << f.evidence << ui::RESET << "\n";
+                    std::cout << "\n";
                 }
                 std::cout << "\n";
             }
@@ -2939,6 +2940,7 @@ std::string BuildReportText(const CheatResult& r, const std::string& name, const
                 
                 rpt << "  [" << conf << "] " << f.description << "\n";
                 if (!f.evidence.empty()) rpt << "              " << f.evidence << "\n";
+                rpt << "\n";
             }
             rpt << "\n";
         }
