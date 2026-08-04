@@ -16,7 +16,12 @@ def get_db_connection():
         print(f"[{datetime.now()}] ERROR: DATABASE_URL not set!")
         return None
     try:
-        return psycopg2.connect(DATABASE_URL)
+        conn = psycopg2.connect(DATABASE_URL)
+        with conn.cursor() as cur:
+            cur.execute("CREATE SCHEMA IF NOT EXISTS gakuran_admin;")
+            cur.execute("SET search_path TO gakuran_admin;")
+        conn.commit()
+        return conn
     except Exception as e:
         print(f"[{datetime.now()}] ERROR connecting to DB: {e}")
         return None
