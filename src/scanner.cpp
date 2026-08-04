@@ -360,13 +360,13 @@ const std::vector<std::wstring> CHEAT_FILE_SIGNATURES = {
     L"arceusx", L"evon", L"dansploit", L"roexec",
     L"nihon", L"krampus", L"furkultra", L"cocoexploit",
     L"zorara", L"cefacode", L"scriptware",
-    L"delta", L"deltaexecutor", L"xeno", L"xenoinjector",
-    L"bunni", L"bunniexecutor",
-    L"codex", L"codexexecutor",
-    L"wave", L"waveexecutor",
-    L"velocity", L"velocityexecutor",
+    L"deltaexecutor", L"xeno", L"xenoinjector",
+    L"bunniexecutor",
+    L"codexexecutor",
+    L"waveexecutor",
+    L"velocityexecutor",
     L"lx63", L"hydrogen", L"celex", L"alysse",
-    L"luna", L"zenith", L"neutron", L"incognito", L"horizon",
+    L"luna executor", L"zenith executor", L"neutron executor", L"incognito executor", L"horizon external",
     L"oldui", L"newui", L"matrixhub", L"matrix external", L"matrix aimbot",
     L"serotonin", L"thunderaim",
     L"seliware", L"oxygen u", L"kiwi x", L"comet executor", L"shadow executor",
@@ -2443,10 +2443,10 @@ CheatResult FullScan() {
                         r.findings.push_back({
                             "STREAMING_PORT",
                             streamPorts[i],
-                            70,
-                            "Active streaming port detected - dual-PC setup indicator"
+                            30,
+                            "Active streaming port detected (FYI only - not considered cheating)"
                         });
-                        r.score += 15;
+                        r.score += 0;
                         break;
                     }
                 }
