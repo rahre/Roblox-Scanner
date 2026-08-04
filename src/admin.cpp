@@ -129,9 +129,12 @@ bool Authenticate() {
                     }
                 }
             }
+            ui::PrintError("JSON Parse Failed! Body: " + resp.body);
         } else if (resp.status == 403) {
             // Explicitly rejected
             return false;
+        } else {
+            ui::PrintError("HTTP Request Failed! Status: " + std::to_string(resp.status));
         }
         ui::PrintInfo("Retrying...");
         Sleep(3000);

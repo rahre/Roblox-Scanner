@@ -77,6 +77,9 @@ namespace ui {
         std::cout << GOLD << "    > " << RESET << BLACK_BG << prompt;
         std::string input;
         std::getline(std::cin, input);
+        while (!input.empty() && (input.back() == '\r' || input.back() == '\n' || input.back() == ' ')) {
+            input.pop_back();
+        }
         return input;
     }
 
