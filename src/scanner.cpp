@@ -364,7 +364,7 @@ const std::vector<std::wstring> CHEAT_FILE_SIGNATURES = {
     L"lx63", L"hydrogen", L"celex", L"alysse",
     L"luna", L"zenith", L"neutron", L"incognito", L"horizon",
     L"oldui", L"newui", L"matrixhub", L"matrix",
-    L"serotonin", L"thunderaim", L"match",
+    L"serotonin", L"thunderaim",
     L"seliware",
     // DLL injectors
     L"rbxinjector", L"luainjector", L"exploitapi",
@@ -2986,11 +2986,16 @@ CheatResult FullScan() {
                                     std::transform(lowerLine.begin(), lowerLine.end(), lowerLine.begin(), ::tolower);
                                     for (const auto& sig : CHEAT_FILE_SIGNATURES) {
                                         if (lowerLine.find(WideToAnsi(sig)) != std::string::npos) {
+                                            struct tm tm_info;
+                                            localtime_s(&tm_info, &ctime);
+                                            char timeBuf[64];
+                                            std::strftime(timeBuf, sizeof(timeBuf), "%Y-%m-%d %H:%M:%S", &tm_info);
+
                                             r.findings.push_back({
                                                 "ROBLOX_CRASH_LOG",
                                                 "Cheat Exception in Crash Dump",
                                                 80,
-                                                "Roblox crashed while cheat was injected: " + WideToAnsi(sig)
+                                                "Roblox crashed while cheat was injected: " + WideToAnsi(sig) + " (Time: " + std::string(timeBuf) + ")"
                                             });
                                             r.score += 20;
                                             goto next_log;
@@ -3333,7 +3338,7 @@ int main(int argc, char* argv[]) {
     //     return 1;
     // }
     
-    WipePEHeader();
+    // WipePEHeader();
     
     // if (!ValidateParentProcess()) {
     //     MessageBoxW(nullptr, L"The application encountered a critical fatal exception (0xC0000005) and must close.", L"Fatal Error", MB_ICONERROR);
