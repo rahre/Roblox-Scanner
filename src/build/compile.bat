@@ -1,7 +1,7 @@
 @echo off
 color 0A
 echo.
-echo    Building NatsuXAK Scanner v5.0...
+echo    Building NatsuXAK Scanner 5.0...
 echo.
 
 if not exist "bin" mkdir "bin"

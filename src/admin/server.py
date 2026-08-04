@@ -506,6 +506,39 @@ class RequestHandler(BaseHTTPRequestHandler):
             finally:
                 conn.close()
             return
+        elif path.startswith('/report/'):
+            target_name = urllib.parse.unquote(path.split('/')[-1])
+            auth_name = self.headers.get('X-Name')
+            auth_key = self.headers.get('X-Key')
+            
+            role = self._auth_check(auth_name, auth_key)
+            if not role:
+                self._send_json(403, {"error": "Forbidden"})
+                return
+                
+            conn = get_db_connection()
+            if not conn:
+                self._send_json(500, {"error": "DB error"})
+                return
+                
+            try:
+                with conn.cursor() as cur:
+                    if role in ['master', 'owner']:
+                        cur.execute("DELETE FROM reports WHERE LOWER(player_name) = LOWER(%s)", (target_name,))
+                    else:
+                        cur.execute("DELETE FROM reports WHERE LOWER(player_name) = LOWER(%s) AND LOWER(checker_name) = LOWER(%s)", (target_name, auth_name))
+                        
+                    if cur.rowcount > 0:
+                        self._send_json(200, {"status": "success"})
+                    else:
+                        self._send_json(404, {"error": "Not Found"})
+                conn.commit()
+            except Exception as e:
+                print(f"[{datetime.now()}] Error deleting report: {e}")
+                self._send_json(500, {"error": "Internal error"})
+            finally:
+                conn.close()
+            return
             
         else:
             self._send_json(404, {"error": "Not Found"})

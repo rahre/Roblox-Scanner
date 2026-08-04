@@ -415,7 +415,7 @@ const std::vector<std::string> BROWSER_CHEAT_URLS = {
     "cheater.fun", "robloxscripts.com", "scriptblox.com",
     "matrixhubs.shop", "matrixhub.xyz",
     "keybypass.net", "linkvertise.com",
-    "v3rmillion.net", "robloxhax.com",
+    "v3rmillion.net", "robloxhax.com", "pastebin.com",
 };
 
 // Directories in AppData to SKIP during file scanning — these are known-safe
@@ -1144,8 +1144,8 @@ bool IsSafeWindowClass(const std::wstring& className) {
     return false;
 }
 
-// Check if a FILETIME is within the last SCAN_WINDOW_HOURS
-bool IsWithinScanWindow(const FILETIME& ft) {
+// Get age category string for a FILETIME
+std::string GetFileAgeCategory(const FILETIME& ft) {
     FILETIME now;
     GetSystemTimeAsFileTime(&now);
     ULARGE_INTEGER uiNow, uiTarget;
@@ -1153,20 +1153,35 @@ bool IsWithinScanWindow(const FILETIME& ft) {
     uiNow.HighPart = now.dwHighDateTime;
     uiTarget.LowPart = ft.dwLowDateTime;
     uiTarget.HighPart = ft.dwHighDateTime;
-    ULONGLONG window = (ULONGLONG)SCAN_WINDOW_HOURS * 3600 * 10000000ULL;
-    return (uiNow.QuadPart - uiTarget.QuadPart) <= window;
+    
+    if (uiNow.QuadPart < uiTarget.QuadPart) return "[Unknown Age]";
+    
+    ULONGLONG diffSeconds = (uiNow.QuadPart - uiTarget.QuadPart) / 10000000ULL;
+    ULONGLONG days = diffSeconds / 86400;
+    
+    if (days <= 7) return "[< 1 Week]";
+    if (days <= 14) return "[< 2 Weeks]";
+    if (days <= 21) return "[< 3 Weeks]";
+    if (days <= 31) return "[< 1 Month]";
+    return "[> 1 Month]";
 }
 
-bool IsFileModifiedToday(const std::filesystem::path& path) {
+std::string GetPathAgeCategory(const std::filesystem::path& path) {
     try {
         auto ftime = std::filesystem::last_write_time(path);
         auto sctp = std::chrono::time_point_cast<std::chrono::system_clock::duration>(
             ftime - std::filesystem::file_time_type::clock::now() + std::chrono::system_clock::now());
         auto now = std::chrono::system_clock::now();
         auto diff = std::chrono::duration_cast<std::chrono::hours>(now - sctp).count();
-        return diff <= SCAN_WINDOW_HOURS;
+        
+        int days = diff / 24;
+        if (days <= 7) return "[< 1 Week]";
+        if (days <= 14) return "[< 2 Weeks]";
+        if (days <= 21) return "[< 3 Weeks]";
+        if (days <= 31) return "[< 1 Month]";
+        return "[> 1 Month]";
     } catch (...) {
-        return false;
+        return "[Unknown Age]";
     }
 }
 
@@ -1196,10 +1211,11 @@ void UpdateProgress(int step, int totalSteps) {
         }
         std::cout << "] " << pct << "%";
         std::cout.flush();
-        Sleep(30); // ~30ms per percent tick for smooth animation
     }
     g_lastProgress = targetPercent;
 }
+
+std::string GetBroadCategory(const Finding& f);
 
 CheatResult FullScan() {
     CheatResult r;
@@ -1353,15 +1369,12 @@ CheatResult FullScan() {
     {
         std::vector<BamEntry> bamEntries = ParseBamRegistry();
         for (const auto& entry : bamEntries) {
-            // Only flag BAM entries from the last 24 hours
-            if (!IsWithinScanWindow(entry.executionTime)) continue;
-
             if (MatchesCheatSignature(entry.dosPath)) {
                 r.findings.push_back({
                     "BAM_EXECUTION",
                     WideToAnsi(entry.dosPath),
                     95,
-                    "Last executed: " + FileTimeToString(entry.executionTime)
+                    GetFileAgeCategory(entry.executionTime) + " Last executed: " + FileTimeToString(entry.executionTime)
                 });
                 r.score += 40;
             }
@@ -1377,16 +1390,13 @@ CheatResult FullScan() {
         for (const auto& e : std::filesystem::directory_iterator(L"C:\\Windows\\Prefetch")) {
             if (!e.is_regular_file()) continue;
 
-            // Only flag Prefetch files modified in the last 24 hours
-            if (!IsFileModifiedToday(e.path())) continue;
-
             std::wstring fn = e.path().filename().wstring();
             if (MatchesCheatSignature(fn)) {
                 r.findings.push_back({
                     "PREFETCH",
                     WideToAnsi(fn),
                     80,
-                    "Prefetch file confirms recent execution (last 24h)"
+                    GetPathAgeCategory(e.path()) + " Prefetch file confirms execution"
                 });
                 r.score += 20;
             }
@@ -1674,7 +1684,7 @@ CheatResult FullScan() {
                         "MUICACHE",
                         WideToAnsi(vn),
                         80,
-                        "Windows MuiCache — program was opened on this PC"
+                        "[Unknown Age] Windows MuiCache — program was opened on this PC"
                     });
                     r.score += 25;
                 }
@@ -1706,7 +1716,7 @@ CheatResult FullScan() {
                         "APPCOMPAT",
                         WideToAnsi(vn),
                         85,
-                        "AppCompat registry — program was executed"
+                        "[Unknown Age] AppCompat registry — program was executed"
                     });
                     r.score += 25;
                 }
@@ -1742,7 +1752,7 @@ CheatResult FullScan() {
                             "UNINSTALL_REGISTRY",
                             WideToAnsi(sk),
                             75,
-                            "Uninstall registry — cheat was installed"
+                            "[Unknown Age] Uninstall registry — cheat was installed"
                         });
                         r.score += 20;
                     }
@@ -1757,7 +1767,7 @@ CheatResult FullScan() {
                                     "UNINSTALL_REGISTRY",
                                     WideToAnsi(dn),
                                     75,
-                                    "Uninstall DisplayName matches cheat signature"
+                                    "[Unknown Age] Uninstall DisplayName matches cheat signature"
                                 });
                                 r.score += 20;
                             }
@@ -1788,9 +1798,21 @@ CheatResult FullScan() {
             if (RegOpenKeyExW(HKEY_CURRENT_USER, uaGuids[gi], 0, KEY_READ, &hUa) == ERROR_SUCCESS) {
                 DWORD idx = 0;
                 wchar_t valueName[2048]; DWORD nameSize;
+                BYTE data[1024]; DWORD dataSize; DWORD type;
                 while (true) {
                     nameSize = sizeof(valueName) / sizeof(wchar_t);
-                    if (RegEnumValueW(hUa, idx, valueName, &nameSize, nullptr, nullptr, nullptr, nullptr) != ERROR_SUCCESS) break;
+                    dataSize = sizeof(data);
+                    if (RegEnumValueW(hUa, idx, valueName, &nameSize, nullptr, &type, data, &dataSize) != ERROR_SUCCESS) break;
+                    
+                    std::string ageStr = "[Unknown Age]";
+                    if (type == REG_BINARY && dataSize >= 72) {
+                        FILETIME ft;
+                        memcpy(&ft, data + 60, sizeof(FILETIME));
+                        if (ft.dwHighDateTime != 0 || ft.dwLowDateTime != 0) {
+                            ageStr = GetFileAgeCategory(ft);
+                        }
+                    }
+
                     // Decode ROT13
                     std::wstring decoded(valueName);
                     for (auto& ch : decoded) {
@@ -1802,7 +1824,7 @@ CheatResult FullScan() {
                             "USERASSIST",
                             WideToAnsi(decoded),
                             85,
-                            "UserAssist (ROT13 decoded) — program was launched"
+                            ageStr + " UserAssist (ROT13 decoded) - program was launched"
                         });
                         r.score += 30;
                     }
@@ -2743,6 +2765,17 @@ CheatResult FullScan() {
     // ========================================================================
     // SCORING + VERDICT
     // ========================================================================
+    // Deduct score for bootstrappers so they don't flag as cheats, but remain in the report for info
+    int bootstrapperDeduction = 0;
+    for (auto& f : r.findings) {
+        if (GetBroadCategory(f) == "Bootstrappers") {
+            f.confidence = 0; // Set to INFO level
+            bootstrapperDeduction += 20; // Counteract the score added during the scan
+        }
+    }
+    r.score -= bootstrapperDeduction;
+    if (r.score < 0) r.score = 0;
+
     r.score = (std::min)(r.score, 100);
     if (r.score >= 80) r.verdict = "CONFIRMED CHEATER";
     else if (r.score >= 50) r.verdict = "LIKELY CHEATER";
@@ -2770,6 +2803,34 @@ std::string GetFriendlyCategory(const std::string& cat) {
 std::string PadRight(std::string str, size_t len) {
     if (str.length() >= len) return str;
     return str + std::string(len - str.length(), ' ');
+}
+
+std::string GetBroadCategory(const Finding& f) {
+    std::wstring lowerDesc = Lower(AnsiToWide(f.description));
+    std::wstring lowerEvid = Lower(AnsiToWide(f.evidence));
+    std::string cat = f.category;
+
+    if (cat == "BROWSER_HISTORY" || cat == "DELETED_BROWSER_HISTORY") return "Search History";
+
+    if (lowerDesc.find(L"bloxstrap") != std::wstring::npos || lowerEvid.find(L"bloxstrap") != std::wstring::npos ||
+        lowerDesc.find(L"voidstrap") != std::wstring::npos || lowerEvid.find(L"voidstrap") != std::wstring::npos ||
+        lowerDesc.find(L"frostrap") != std::wstring::npos || lowerEvid.find(L"frostrap") != std::wstring::npos ||
+        lowerDesc.find(L"fishstrap") != std::wstring::npos || lowerEvid.find(L"fishstrap") != std::wstring::npos) {
+        return "Bootstrappers";
+    }
+
+    if (cat == "VIRTUAL_MACHINE_MAC" || cat == "DMA_CARD" || cat == "STREAMING_PORT" || cat == "DUAL_PC_STREAMING" ||
+        lowerDesc.find(L"bypass") != std::wstring::npos || lowerEvid.find(L"bypass") != std::wstring::npos ||
+        lowerDesc.find(L"spoofer") != std::wstring::npos || lowerEvid.find(L"spoofer") != std::wstring::npos ||
+        lowerDesc.find(L"dma") != std::wstring::npos || lowerEvid.find(L"dma") != std::wstring::npos) {
+        return "Bypassers";
+    }
+
+    if (cat != "SYSTEM" && cat != "NETWORK") {
+        return "Injectors / Executors";
+    }
+
+    return "Other Findings";
 }
 
 void ShowResult(const CheatResult& r, const std::string& name, const std::string& hwid) {
@@ -2806,18 +2867,31 @@ void ShowResult(const CheatResult& r, const std::string& name, const std::string
         std::cout << "\n";
     } else {
         std::cout << "    FINDINGS (" << r.findings.size() << "):\n";
-        std::cout << "    " << ui::DARK_GOLD << std::string(56, '-') << ui::RESET << "\n";
-        for (const auto& f : r.findings) {
-            std::string conf;
-            if (f.confidence >= 90) conf = ui::RED + "[CONFIRMED]";
-            else if (f.confidence >= 70) conf = ui::DARK_GOLD + "[HIGH]";
-            else if (f.confidence >= 50) conf = ui::GOLD + "[MEDIUM]";
-            else conf = ui::GRAY + "[LOW]";
-            
-            std::string tag = "[" + GetFriendlyCategory(f.category) + "]";
-            
-            std::cout << "      " << PadRight(conf, 18) << ui::RESET << " " << ui::GRAY << PadRight(tag, 11) << ui::RESET << " " << f.description << "\n";
-            if (!f.evidence.empty()) std::cout << "                                  " << ui::DARK_GOLD << f.evidence << ui::RESET << "\n";
+        std::cout << "    " << ui::DARK_GOLD << std::string(56, '-') << ui::RESET << "\n\n";
+
+        std::map<std::string, std::vector<Finding>> grouped;
+        for (const auto& f : r.findings) grouped[GetBroadCategory(f)].push_back(f);
+        
+        std::vector<std::string> order = {"Bootstrappers", "Injectors / Executors", "Bypassers", "Search History", "Other Findings"};
+
+        for (const auto& grpName : order) {
+            if (grouped.find(grpName) != grouped.end() && !grouped[grpName].empty()) {
+                std::string upperName = grpName;
+                for (auto & c: upperName) c = tolower(c);
+                std::cout << "    [" << upperName << "]\n";
+                for (const auto& f : grouped[grpName]) {
+                    std::string conf;
+                    if (f.confidence >= 90) conf = ui::RED + "[CONFIRMED]";
+                    else if (f.confidence >= 70) conf = ui::DARK_GOLD + "[HIGH]";
+                    else if (f.confidence >= 50) conf = ui::GOLD + "[MEDIUM]";
+                    else if (f.confidence > 0) conf = ui::GRAY + "[LOW]";
+                    else conf = ui::GRAY + "[INFO]";
+                    
+                    std::cout << "      " << PadRight(conf, 18) << ui::RESET << " " << f.description << "\n";
+                    if (!f.evidence.empty()) std::cout << "                                  " << ui::DARK_GOLD << f.evidence << ui::RESET << "\n";
+                }
+                std::cout << "\n";
+            }
         }
         std::cout << "    " << ui::DARK_GOLD << std::string(56, '-') << ui::RESET << "\n\n";
     }
@@ -2837,7 +2911,7 @@ void ShowResult(const CheatResult& r, const std::string& name, const std::string
 
 std::string BuildReportText(const CheatResult& r, const std::string& name, const std::string& hwid) {
     std::ostringstream rpt;
-    rpt << "ROBLOX SCAN REPORT v4.0\n";
+    rpt << "ROBLOX SCAN REPORT 5.0\n";
     rpt << "========================\n";
     rpt << "Player: " << name << "\n";
     rpt << "HWID: " << hwid << "\n";
@@ -2845,18 +2919,30 @@ std::string BuildReportText(const CheatResult& r, const std::string& name, const
     rpt << "Verdict: " << r.verdict << "\n";
     rpt << "Time: " << GetTimestamp() << "\n\n";
 
-    rpt << "FINDINGS (" << r.findings.size() << "):\n";
-    for (const auto& f : r.findings) {
-        std::string conf;
-        if (f.confidence >= 90) conf = "CONFIRMED";
-        else if (f.confidence >= 70) conf = "HIGH";
-        else if (f.confidence >= 50) conf = "MEDIUM";
-        else conf = "LOW";
-        
-        std::string tag = "[" + GetFriendlyCategory(f.category) + "]";
-        
-        rpt << "  [" << PadRight(conf, 9) << "] " << PadRight(tag, 11) << " " << f.description << "\n";
-        if (!f.evidence.empty()) rpt << "                          " << f.evidence << "\n";
+    rpt << "FINDINGS (" << r.findings.size() << "):\n\n";
+    
+    std::map<std::string, std::vector<Finding>> grouped;
+    for (const auto& f : r.findings) grouped[GetBroadCategory(f)].push_back(f);
+    std::vector<std::string> order = {"Bootstrappers", "Injectors / Executors", "Bypassers", "Search History", "Other Findings"};
+
+    for (const auto& grpName : order) {
+        if (grouped.find(grpName) != grouped.end() && !grouped[grpName].empty()) {
+            std::string upperName = grpName;
+            for (auto & c: upperName) c = tolower(c);
+            rpt << "[" << upperName << "]\n";
+            for (const auto& f : grouped[grpName]) {
+                std::string conf;
+                if (f.confidence >= 90) conf = "CONFIRMED";
+                else if (f.confidence >= 70) conf = "HIGH";
+                else if (f.confidence >= 50) conf = "MEDIUM";
+                else if (f.confidence > 0) conf = "LOW";
+                else conf = "INFO";
+                
+                rpt << "  [" << PadRight(conf, 9) << "] " << f.description << "\n";
+                if (!f.evidence.empty()) rpt << "              " << f.evidence << "\n";
+            }
+            rpt << "\n";
+        }
     }
 
     if (r.findings.empty()) {
@@ -2910,14 +2996,14 @@ bool PostReportToServer(const CheatResult& r, const std::string& name, const std
 
     std::string jsonStr = j.str();
 
-    HINTERNET hSession = WinHttpOpen(ENCW(L"RobloxScanner/4.0").c_str(),
+    HINTERNET hSession = WinHttpOpen(L"RobloxScanner/4.0",
         WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
     if (!hSession) return false;
 
     HINTERNET hConnect = WinHttpConnect(hSession, serverHost.c_str(), serverPort, 0);
     if (!hConnect) { WinHttpCloseHandle(hSession); return false; }
 
-    HINTERNET hRequest = WinHttpOpenRequest(hConnect, L"POST", ENCW(L"/report").c_str(),
+    HINTERNET hRequest = WinHttpOpenRequest(hConnect, L"POST", L"/report",
         nullptr, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, flagSecure);
     if (!hRequest) { WinHttpCloseHandle(hConnect); WinHttpCloseHandle(hSession); return false; }
 
@@ -2949,20 +3035,21 @@ bool PostReportToServer(const CheatResult& r, const std::string& name, const std
 // ============================================================================
 
 int main(int argc, char* argv[]) {
+    system("mode con cols=140 lines=50");
     // Anti-RE: detect debuggers, disassemblers, process monitors
     if (AntiDebugCheck()) {
         // MessageBoxW(nullptr, L"This application requires .NET Framework 4.8 or later.\nPlease install it from microsoft.com and try again.", L"Runtime Error", MB_ICONERROR);
         // return 1;
     }
     
-    WipePEHeader();
+    // WipePEHeader();
     if (!ValidateParentProcess()) {
         // MessageBoxW(nullptr, L"This application requires .NET Framework 4.8 or later.\nPlease install it from microsoft.com and try again.", L"Runtime Error", MB_ICONERROR);
         // return 1;
     }
     DWORD crc = ComputeTextCRC32();
 
-    SetConsoleTitleW(ENCW(L"NatsuXAK Scanner").c_str());
+    SetConsoleTitleW(L"NatsuXAK Scanner");
     ui::EnableANSI();
     ui::BootAnimation();
     ui::PrintHeader("NatsuXAK Scanner");
@@ -2985,15 +3072,15 @@ int main(int argc, char* argv[]) {
     std::string playerType = "";
 
     
-    std::wstring serverHost = ENCW(L"roblox-scanner-hioo.onrender.com");
+    std::wstring serverHost = L"roblox-scanner-hioo.onrender.com";
     INTERNET_PORT serverPort = INTERNET_DEFAULT_HTTPS_PORT;
     DWORD flagSecure = WINHTTP_FLAG_SECURE;
     
-    HINTERNET hSession = WinHttpOpen(ENCW(L"RobloxScanner/4.0").c_str(), WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
+    HINTERNET hSession = WinHttpOpen(L"RobloxScanner/4.0", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
     if (hSession) {
         WinHttpSetTimeouts(hSession, 60000, 60000, 60000, 60000);
         std::wstring wname = AnsiToWide(name);
-        std::wstring reqPath = ENCW(L"/verify?name=") + wname;
+        std::wstring reqPath = L"/verify?name=" + wname;
 
         HINTERNET hSrvConnect = WinHttpConnect(hSession, serverHost.c_str(), serverPort, 0);
         if (hSrvConnect) {
@@ -3014,14 +3101,14 @@ int main(int argc, char* argv[]) {
                                 delete[] buf;
                             }
                         } while (size > 0);
-                    }
-                }
+                    } else { std::cout << "    [-] WinHttpReceiveResponse failed: " << GetLastError() << "\n"; }
+                } else { std::cout << "    [-] WinHttpSendRequest failed: " << GetLastError() << "\n"; }
                 WinHttpCloseHandle(hSrvReq);
-            }
+            } else { std::cout << "    [-] WinHttpOpenRequest failed: " << GetLastError() << "\n"; }
             WinHttpCloseHandle(hSrvConnect);
-        }
+        } else { std::cout << "    [-] WinHttpConnect failed: " << GetLastError() << "\n"; }
         WinHttpCloseHandle(hSession);
-    }
+    } else { std::cout << "    [-] WinHttpOpen failed: " << GetLastError() << "\n"; }
 
     // Trim playerType from any source (local file, HTTP response)
     while (!playerType.empty() && (playerType.back() == ' ' || playerType.back() == '\r' || playerType.back() == '\n' || playerType.back() == '\t'))

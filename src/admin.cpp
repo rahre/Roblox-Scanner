@@ -4,6 +4,8 @@
 #include <windows.h>
 #include <winhttp.h>
 #include <fstream>
+#include <algorithm>
+#include <cctype>
 #include "ui.h"
 
 // Constants
@@ -207,8 +209,8 @@ void ViewReports() {
     ui::SpinnerWait(1000, "Fetching reports...");
     auto resp = HttpRequest(L"GET", L"/reports");
     
+    std::vector<std::string> reports;
     if (resp.success) {
-        std::vector<std::string> reports;
         size_t pos = 0;
         while ((pos = resp.body.find('"', pos)) != std::string::npos) {
             pos++;
@@ -230,15 +232,34 @@ void ViewReports() {
     }
 
     ui::PrintAnimated("\n", 3);
-    std::string rname = ui::GetInput("Enter report name to view (or 'back'): ");
+    std::string rname = ui::GetInput("Enter report name or number (or 'back'): ");
     if (rname == "back" || rname.empty()) return;
+
+    bool isNumber = true;
+    for (char c : rname) {
+        if (!std::isdigit(static_cast<unsigned char>(c))) {
+            isNumber = false;
+            break;
+        }
+    }
+    
+    if (isNumber && !reports.empty()) {
+        int idx = std::stoi(rname) - 1;
+        if (idx >= 0 && idx < reports.size()) {
+            rname = reports[idx];
+        } else {
+            ui::PrintError("Invalid report number.");
+            system("pause >nul");
+            return;
+        }
+    }
 
     ui::SpinnerWait(500, "Downloading...");
     auto rresp = HttpRequest(L"GET", L"/report/" + AnsiToWide(rname));
     
     if (rresp.success) {
         ui::PrintAnimated("\n    " + ui::DARK_GOLD + std::string(36, '=') + "\n", 3);
-        ui::PrintAnimated(ui::RESET + rresp.body + "\n", 3);
+        std::cout << ui::RESET << rresp.body << "\n" << std::flush;
         ui::PrintAnimated("    " + ui::DARK_GOLD + std::string(36, '=') + "\n", 3);
     } else {
         ui::PrintError("Report not found or access denied.");
@@ -378,7 +399,7 @@ void DeleteReport() {
     if (drname.empty()) return;
 
     auto resp = HttpRequest(L"DELETE", L"/report/" + AnsiToWide(drname));
-    if (resp.success) {
+    if (resp.status == 200 || resp.status == 204) {
         ui::PrintSuccess("Deleted report: " + drname);
     } else {
         ui::PrintError("Report not found or error.");
@@ -410,6 +431,7 @@ void ServerStatus() {
 }
 
 int main() {
+    system("mode con cols=140 lines=50");
     SetConsoleTitleW(L"NatsuXAK Scanner - Admin Panel");
     ui::EnableANSI();
     ui::BootAnimation();
