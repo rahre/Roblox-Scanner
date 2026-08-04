@@ -313,11 +313,43 @@ void ListPlayers() {
     auto resp = HttpRequest(L"GET", L"/players");
     
     if (resp.success) {
-        // The endpoint returns JSON like [{"name": "test", "type": "TEST"}, ...]
-        // We can just print the raw body or do simple parsing.
-        // It's just a JSON array, let's print it directly for now, or parse it simply.
         ui::PrintAnimated(ui::GOLD + "    Active Players / Testers:\n" + ui::RESET, 3);
-        ui::PrintAnimated(ui::RESET + resp.body + "\n\n", 3);
+        
+        std::string body = resp.body;
+        size_t pos = 0;
+        bool found = false;
+        while ((pos = body.find("\"name\":", pos)) != std::string::npos) {
+            pos += 7;
+            size_t startName = body.find('"', pos);
+            if (startName == std::string::npos) break;
+            startName++;
+            size_t endName = body.find('"', startName);
+            if (endName == std::string::npos) break;
+            std::string pName = body.substr(startName, endName - startName);
+            
+            size_t typePos = body.find("\"type\":", endName);
+            std::string pType = "UNKNOWN";
+            if (typePos != std::string::npos) {
+                typePos += 7;
+                size_t startType = body.find('"', typePos);
+                if (startType != std::string::npos) {
+                    startType++;
+                    size_t endType = body.find('"', startType);
+                    if (endType != std::string::npos) {
+                        pType = body.substr(startType, endType - startType);
+                    }
+                }
+            }
+            
+            ui::PrintAnimated("    - " + pName + " [" + pType + "]\n", 3);
+            found = true;
+            pos = endName;
+        }
+        
+        if (!found) {
+            ui::PrintAnimated("    (No players found)\n", 3);
+        }
+        std::cout << "\n";
     } else {
         ui::PrintError("Error fetching players.");
     }
