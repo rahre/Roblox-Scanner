@@ -114,11 +114,19 @@ bool Authenticate() {
             // basic json parse
             size_t rpos = resp.body.find("\"role\"");
             if (rpos != std::string::npos) {
-                size_t q1 = resp.body.find('"', rpos + 6);
-                size_t q2 = resp.body.find('"', q1 + 1);
-                if (q1 != std::string::npos && q2 != std::string::npos) {
-                    ROLE = resp.body.substr(q1 + 1, q2 - q1 - 1);
-                    return true;
+                // Find the colon after "role"
+                size_t colon_pos = resp.body.find(':', rpos);
+                if (colon_pos != std::string::npos) {
+                    // Find the first quote after the colon
+                    size_t q1 = resp.body.find('"', colon_pos);
+                    // Find the closing quote
+                    if (q1 != std::string::npos) {
+                        size_t q2 = resp.body.find('"', q1 + 1);
+                        if (q2 != std::string::npos) {
+                            ROLE = resp.body.substr(q1 + 1, q2 - q1 - 1);
+                            return true;
+                        }
+                    }
                 }
             }
         } else if (resp.status == 403) {
