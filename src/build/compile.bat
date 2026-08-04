@@ -56,7 +56,7 @@ where cl >nul 2>nul
 if %errorlevel% equ 0 (
     echo    [*] Using MSVC compiler
     rc /nologo ..\resource.rc
-    cl /EHsc /std:c++17 /O2 /DNDEBUG /GS /DYNAMICBASE /NXCOMPAT /Fe:bin\scanner.exe ..\scanner.cpp ..\resource.res /link advapi32.lib winhttp.lib iphlpapi.lib crypt32.lib wintrust.lib ntdll.lib psapi.lib shell32.lib ole32.lib ws2_32.lib /RELEASE
+    cl /EHsc /std:c++17 /O2 /DNDEBUG /GS /DYNAMICBASE /NXCOMPAT /Fe:bin\scanner.exe ..\scanner.cpp ..\resource.res /link advapi32.lib winhttp.lib iphlpapi.lib crypt32.lib wintrust.lib ntdll.lib psapi.lib shell32.lib ole32.lib ws2_32.lib wevtapi.lib /RELEASE
     goto check_scanner
 )
 
@@ -64,7 +64,7 @@ if %errorlevel% equ 0 (
 where g++ >nul 2>nul
 if %errorlevel% equ 0 (
     echo    [*] Using MinGW g++ compiler
-    g++ -std=c++17 -O2 -s -DNDEBUG -o bin\scanner.exe ..\scanner.cpp ..\resource.res -lwinhttp -liphlpapi -lcrypt32 -lwintrust -lntdll -lpsapi -lshell32 -lole32 -lws2_32 -static -Wl,--dynamicbase,--nxcompat
+    g++ -std=c++17 -O2 -s -DNDEBUG -o bin\scanner.exe ..\scanner.cpp ..\resource.res -lwinhttp -liphlpapi -lcrypt32 -lwintrust -lntdll -lpsapi -lshell32 -lole32 -lws2_32 -lwevtapi -static -Wl,--dynamicbase,--nxcompat
     goto check_scanner
 )
 

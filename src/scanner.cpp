@@ -10,6 +10,8 @@
 #include <winhttp.h>
 #include <psapi.h>
 #include <shlobj.h>
+#include <intrin.h>
+#include <winevt.h>
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -38,6 +40,7 @@
 #pragma comment(lib, "ntdll.lib")
 #pragma comment(lib, "psapi.lib")
 #pragma comment(lib, "shell32.lib")
+#pragma comment(lib, "wevtapi.lib")
 
 // ============================================================================
 // CONFIGURATION
@@ -2780,7 +2783,70 @@ CheatResult FullScan() {
         }
     }
 
-    UpdateProgress(31, 31);
+    // ========================================================================
+    // PHASE 32: Hypervisor Detection (RDTSC Timing Attack)
+    // Detects Ring -1 stealth hypervisors used to intercept execution environments
+    // ========================================================================
+    {
+        unsigned long long tsc_pre = __rdtsc();
+        int cpuInfo[4];
+        __cpuid(cpuInfo, 1);
+        unsigned long long tsc_post = __rdtsc();
+        unsigned long long delta = tsc_post - tsc_pre;
+        
+        // Typical bare-metal CPUID takes ~50-200 cycles. A VM-Exit context switch takes >750.
+        if (delta > 750) {
+            r.findings.push_back({
+                "HYPERVISOR_DETECTED",
+                "RDTSC Timing Anomaly",
+                90,
+                "CPUID instruction took " + std::to_string(delta) + " cycles. VM-Exit intercept likely."
+            });
+            r.score += 40;
+        }
+    }
+
+    // ========================================================================
+    // PHASE 33: BYOVD (Bring Your Own Vulnerable Driver) Detection
+    // Queries Event Log ID 7045 (Service Installed) for anomalous kernel drivers
+    // ========================================================================
+    {
+        EVT_HANDLE hResults = EvtQuery(NULL, L"System", L"*[System[(EventID=7045)]]", EvtQueryChannelPath | EvtQueryReverseDirection);
+        if (hResults) {
+            EVT_HANDLE hEvents[10];
+            DWORD returned = 0;
+            // Only check the 10 most recent service installs
+            if (EvtNext(hResults, 10, hEvents, INFINITE, 0, &returned)) {
+                for (DWORD i = 0; i < returned; i++) {
+                    DWORD bufSize = 0;
+                    DWORD propCount = 0;
+                    EvtRender(NULL, hEvents[i], EvtRenderEventXml, bufSize, NULL, &bufSize, &propCount);
+                    if (GetLastError() == ERROR_INSUFFICIENT_BUFFER) {
+                        std::vector<wchar_t> buffer(bufSize);
+                        if (EvtRender(NULL, hEvents[i], EvtRenderEventXml, bufSize, buffer.data(), &bufSize, &propCount)) {
+                            std::wstring xml(buffer.data());
+                            // If it's a kernel driver and not in System32 (e.g. loaded from Temp/Downloads)
+                            if (xml.find(L"Kernel Mode Driver") != std::wstring::npos && 
+                                (xml.find(L"\\AppData\\") != std::wstring::npos || xml.find(L"\\Temp\\") != std::wstring::npos)) {
+                                r.findings.push_back({
+                                    "BYOVD_EXPLOIT",
+                                    "Vulnerable Driver Load Detected",
+                                    95,
+                                    "Suspicious kernel driver installed from AppData/Temp."
+                                });
+                                r.score += 50;
+                                break; // Only flag once
+                            }
+                        }
+                    }
+                    EvtClose(hEvents[i]);
+                }
+            }
+            EvtClose(hResults);
+        }
+    }
+
+    UpdateProgress(33, 33);
 
     // ========================================================================
     // SCORING + VERDICT
