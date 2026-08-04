@@ -115,23 +115,6 @@ echo    [+] service.exe built.
 echo.
 
 :: ============================================================
-:: UPX COMPRESSION (optional)
-:: ============================================================
-
-where upx >nul 2>nul
-if %errorlevel% equ 0 (
-    echo    [*] Compressing with UPX...
-    upx --best --lzma "bin\scanner.exe" >nul 2>nul
-    upx --best --lzma "bin\service.exe" >nul 2>nul
-    upx --best --lzma "bin\admin.exe" >nul 2>nul
-    echo    [+] UPX compression applied.
-    echo.
-) else (
-    echo    [*] UPX not found, skipping compression.
-    echo.
-)
-
-:: ============================================================
 :: COPY TO DISTRIBUTION FOLDERS
 :: ============================================================
 
