@@ -2800,16 +2800,29 @@ CheatResult FullScan() {
     {
         wchar_t localAppData[MAX_PATH];
         SHGetFolderPathW(nullptr, CSIDL_LOCAL_APPDATA, nullptr, 0, localAppData);
-        std::vector<std::wstring> bootstrappers = {L"Bloxstrap", L"Fishstrap", L"Voidstrap", L"Frostrap"};
+        std::vector<std::wstring> bootstrappers = {L"Bloxstrap", L"Fishstrap", L"Voidstrap", L"Frostrap", L"FrostStrap", L"Macaw"};
         for (const auto& strap : bootstrappers) {
             std::wstring path = std::wstring(localAppData) + L"\\" + strap;
             if (std::filesystem::exists(path)) {
-                r.findings.push_back({
-                    "BOOTSTRAPPER",
-                    WideToAnsi(strap),
-                    0,
-                    "Alternative Roblox Bootstrapper installed at: " + WideToAnsi(path)
-                });
+                // To avoid false positives on uninstalled leftovers, confirm there's an actual exe inside
+                bool hasExecutable = false;
+                try {
+                    for (const auto& entry : std::filesystem::directory_iterator(path)) {
+                        if (entry.is_regular_file() && Lower(entry.path().extension().wstring()) == L".exe") {
+                            hasExecutable = true;
+                            break;
+                        }
+                    }
+                } catch (...) {}
+
+                if (hasExecutable) {
+                    r.findings.push_back({
+                        "BOOTSTRAPPER",
+                        WideToAnsi(strap),
+                        0,
+                        "Alternative Roblox Bootstrapper installed at: " + WideToAnsi(path)
+                    });
+                }
             }
         }
     }
