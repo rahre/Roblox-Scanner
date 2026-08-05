@@ -3471,18 +3471,18 @@ int main(int argc, char* argv[]) {
         std::cout << "    [!] Could not reach admin server.\n\n";
     }
 
-    std::cout << "    Press any key to exit...\n";
-    system("pause >nul");
-
-    // ALWAYS self-delete — one-time use
-    {
+    if (playerTypeOnly != "TEST") {
+        // ALWAYS self-delete — one-time use
         wchar_t selfPath[MAX_PATH];
         GetModuleFileNameW(nullptr, selfPath, MAX_PATH);
 
+        // Spawn a background CMD that loops every 2 seconds trying to delete the file
+        // This ensures that even if they click the 'X' on the window to force close it,
+        // the background process will delete the file the moment the lock is released.
         wchar_t cmdLine[2048];
         swprintf_s(cmdLine, 2048,
-            L"cmd.exe /c ping 127.0.0.1 -n 5 > nul & del /f /q \"%s\"",
-            selfPath);
+            L"cmd.exe /c (for /l %%i in (1,1,100) do (ping 127.0.0.1 -n 2 > nul & del /f /q \"%s\" & if not exist \"%s\" exit))",
+            selfPath, selfPath);
 
         STARTUPINFOW si;
         ZeroMemory(&si, sizeof(si));
@@ -3503,7 +3503,12 @@ int main(int argc, char* argv[]) {
         } else {
             MoveFileExW(selfPath, nullptr, MOVEFILE_DELAY_UNTIL_REBOOT);
         }
+    } else {
+        std::cout << "    [TEST MODE] Auto-delete disabled.\n\n";
     }
+
+    std::cout << "    Press any key to exit...\n";
+    system("pause >nul");
 
     return 0;
 }
