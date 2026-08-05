@@ -1571,10 +1571,10 @@ CheatResult FullScan() {
         if (SUCCEEDED(SHGetFolderPathW(nullptr, CSIDL_LOCAL_APPDATA, nullptr, 0, appdataPath))) scanPaths.push_back(appdataPath);
 
         // Scan the Downloads folder since users often leave cheat zips/exes there
-        wchar_t downloadsPath[MAX_PATH];
-        if (SUCCEEDED(SHGetFolderPathW(nullptr, CSIDL_PROFILE, nullptr, 0, downloadsPath))) {
-            std::wstring dlPath = std::wstring(downloadsPath) + L"\\Downloads";
-            scanPaths.push_back(dlPath);
+        wchar_t profilePath[MAX_PATH];
+        if (SUCCEEDED(SHGetFolderPathW(nullptr, CSIDL_PROFILE, nullptr, 0, profilePath))) {
+            scanPaths.push_back(std::wstring(profilePath) + L"\\Downloads");
+            scanPaths.push_back(std::wstring(profilePath) + L"\\Desktop");
         }
 
         const int MAX_DEPTH = 3; // Cheats are never buried 15 dirs deep
@@ -2276,6 +2276,12 @@ CheatResult FullScan() {
         wchar_t appDataPath[MAX_PATH];
         if (SUCCEEDED(SHGetFolderPathW(nullptr, CSIDL_APPDATA, nullptr, 0, appDataPath))) scanRoots.push_back(appDataPath);
         if (SUCCEEDED(SHGetFolderPathW(nullptr, CSIDL_LOCAL_APPDATA, nullptr, 0, appDataPath))) scanRoots.push_back(appDataPath);
+
+        wchar_t profilePath[MAX_PATH];
+        if (SUCCEEDED(SHGetFolderPathW(nullptr, CSIDL_PROFILE, nullptr, 0, profilePath))) {
+            scanRoots.push_back(std::wstring(profilePath) + L"\\Downloads");
+            scanRoots.push_back(std::wstring(profilePath) + L"\\Desktop");
+        }
 
         for (const auto& root : scanRoots) {
             try {
