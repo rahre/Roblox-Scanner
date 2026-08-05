@@ -1570,6 +1570,13 @@ CheatResult FullScan() {
         if (SUCCEEDED(SHGetFolderPathW(nullptr, CSIDL_APPDATA, nullptr, 0, appdataPath))) scanPaths.push_back(appdataPath);
         if (SUCCEEDED(SHGetFolderPathW(nullptr, CSIDL_LOCAL_APPDATA, nullptr, 0, appdataPath))) scanPaths.push_back(appdataPath);
 
+        // Scan the Downloads folder since users often leave cheat zips/exes there
+        wchar_t downloadsPath[MAX_PATH];
+        if (SUCCEEDED(SHGetFolderPathW(nullptr, CSIDL_PROFILE, nullptr, 0, downloadsPath))) {
+            std::wstring dlPath = std::wstring(downloadsPath) + L"\\Downloads";
+            scanPaths.push_back(dlPath);
+        }
+
         const int MAX_DEPTH = 3; // Cheats are never buried 15 dirs deep
 
         for (const auto& scanDir : scanPaths) {
