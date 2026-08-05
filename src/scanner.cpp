@@ -3368,7 +3368,7 @@ void CheckForUpdates(const std::string& currentVersion, const std::wstring& targ
 
     HINTERNET hConnect = WinHttpConnect(hSession, L"raw.githubusercontent.com", INTERNET_DEFAULT_HTTPS_PORT, 0);
     if (hConnect) {
-        HINTERNET hRequest = WinHttpOpenRequest(hConnect, L"GET", L"/rahre/Roblox-Scanner/main/version.txt", nullptr, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, WINHTTP_FLAG_SECURE);
+        HINTERNET hRequest = WinHttpOpenRequest(hConnect, L"GET", (std::wstring(L"/rahre/Roblox-Scanner/main/version.txt?t=") + std::to_wstring(GetTickCount())).c_str(), nullptr, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, WINHTTP_FLAG_SECURE);
         if (hRequest) {
             if (WinHttpSendRequest(hRequest, WINHTTP_NO_ADDITIONAL_HEADERS, 0, WINHTTP_NO_REQUEST_DATA, 0, 0, 0) && WinHttpReceiveResponse(hRequest, nullptr)) {
                 DWORD size = 0;
@@ -3392,7 +3392,7 @@ void CheckForUpdates(const std::string& currentVersion, const std::wstring& targ
                     std::cout << "    [!] Update found! Version " << fetchedVersion << " is available.\n";
                     std::cout << "    [*] Downloading update...\n";
                     
-                    HINTERNET hReqFile = WinHttpOpenRequest(hConnect, L"GET", targetExeUrl.c_str(), nullptr, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, WINHTTP_FLAG_SECURE);
+                    HINTERNET hReqFile = WinHttpOpenRequest(hConnect, L"GET", (targetExeUrl + L"?t=" + std::to_wstring(GetTickCount())).c_str(), nullptr, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, WINHTTP_FLAG_SECURE);
                     if (hReqFile && WinHttpSendRequest(hReqFile, WINHTTP_NO_ADDITIONAL_HEADERS, 0, WINHTTP_NO_REQUEST_DATA, 0, 0, 0) && WinHttpReceiveResponse(hReqFile, nullptr)) {
                         wchar_t tempPath[MAX_PATH];
                         GetTempPathW(MAX_PATH, tempPath);
