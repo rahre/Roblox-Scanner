@@ -1,6 +1,8 @@
-﻿# Binaries
+# Binaries
 bin/
 *.exe
+!Owner/*.exe
+!"PC Check/*.exe"
 *.obj
 *.lib
 *.exp
