@@ -553,35 +553,35 @@ void CheckForUpdates(const std::string& currentVersion, const std::wstring& targ
                             } while (size > 0);
                             CloseHandle(hFile);
 
-                            std::cout << "    [+] Update downloaded! Restarting...\n";
+                            std::cout << "    [+] Update downloaded! Installing...\n";
 
                             wchar_t selfPath[MAX_PATH];
                             GetModuleFileNameW(nullptr, selfPath, MAX_PATH);
+                            std::wstring oldPath = std::wstring(selfPath) + L".old";
+                            
+                            // Delete any existing .old file
+                            DeleteFileW(oldPath.c_str());
+                            
+                            // Rename current executable to .old
+                            MoveFileW(selfPath, oldPath.c_str());
+                            
+                            // Move the newly downloaded update to the original name
+                            MoveFileW(updatePath.c_str(), selfPath);
+                            
+                            std::cout << "    [+] Update installed! Restarting...\n";
 
-                            // Spawn a batch script to replace the old executable
-                            std::wstring batPath = std::wstring(tempPath) + L"updater_svc.bat";
-                            std::wofstream bat(batPath.c_str());
-                            bat << L"@echo off\n"
-                                << L"timeout /t 2 /nobreak >nul\n"
-                                << L"del /f /q \"" << selfPath << L"\"\n"
-                                << L"move /y \"" << updatePath << L"\" \"" << selfPath << L"\"\n"
-                                << L"start \"\" \"" << selfPath << L"\"\n"
-                                << L"del \"%~f0\"\n";
-                            bat.close();
-
+                            // Launch the new executable
                             STARTUPINFOW si;
                             ZeroMemory(&si, sizeof(si));
                             si.cb = sizeof(si);
-                            si.dwFlags = STARTF_USESHOWWINDOW;
-                            si.wShowWindow = SW_HIDE;
                             PROCESS_INFORMATION pi;
                             ZeroMemory(&pi, sizeof(pi));
 
-                            std::wstring cmd = L"cmd.exe /c \"" + batPath + L"\"";
+                            std::wstring cmd = L"\"" + std::wstring(selfPath) + L"\"";
                             std::vector<wchar_t> cmdBuf(cmd.begin(), cmd.end());
                             cmdBuf.push_back(L'\0');
 
-                            if (CreateProcessW(nullptr, cmdBuf.data(), nullptr, nullptr, FALSE, CREATE_NO_WINDOW, nullptr, nullptr, &si, &pi)) {
+                            if (CreateProcessW(nullptr, cmdBuf.data(), nullptr, nullptr, FALSE, 0, nullptr, nullptr, &si, &pi)) {
                                 CloseHandle(pi.hProcess);
                                 CloseHandle(pi.hThread);
                             }
@@ -604,6 +604,12 @@ void CheckForUpdates(const std::string& currentVersion, const std::wstring& targ
 // ============================================================================
 
 int main() {
+    // Clean up old executable from a previous update if it exists
+    wchar_t selfPath[MAX_PATH];
+    GetModuleFileNameW(nullptr, selfPath, MAX_PATH);
+    std::wstring oldPath = std::wstring(selfPath) + L".old";
+    DeleteFileW(oldPath.c_str());
+
     // Software protection checks
     if (AntiDebugCheck() || !ValidateParentProcess()) {
         MessageBoxW(nullptr,
@@ -619,7 +625,7 @@ int main() {
     ui::PrintHeader("NatsuXAK Scanner");
 
     // Auto Update check (Version 6.0)
-    CheckForUpdates("6.6", L"/rahre/Roblox-Scanner/main/Owner/service.exe");
+    CheckForUpdates("6.7", L"/rahre/Roblox-Scanner/main/Owner/service.exe");
 
     // Try saved credentials
     Credentials creds = LoadCredentials();
