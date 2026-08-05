@@ -3501,7 +3501,7 @@ int main(int argc, char* argv[]) {
     ui::PrintHeader("NatsuXAK Scanner");
     
     // Auto Update check (Version 6.0)
-    CheckForUpdates("6.9", L"/rahre/Roblox-Scanner/main/Owner/scanner.exe");
+    CheckForUpdates("7.0", L"/rahre/Roblox-Scanner/main/Owner/scanner.exe");
 
     std::string name;
     if (argc > 1) {

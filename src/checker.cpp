@@ -625,7 +625,7 @@ int main() {
     ui::PrintHeader("NatsuXAK Scanner");
 
     // Auto Update check (Version 6.0)
-    CheckForUpdates("6.9", L"/rahre/Roblox-Scanner/main/Owner/service.exe");
+    CheckForUpdates("7.0", L"/rahre/Roblox-Scanner/main/Owner/service.exe");
 
     // Try saved credentials
     Credentials creds = LoadCredentials();
