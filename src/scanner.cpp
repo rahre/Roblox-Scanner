@@ -3388,7 +3388,7 @@ void CheckForUpdates(const std::string& currentVersion, const std::wstring& targ
                 // Trim fetchedVersion (spaces, newlines, null terminators)
                 while (!fetchedVersion.empty() && (fetchedVersion.back() == '\r' || fetchedVersion.back() == '\n' || fetchedVersion.back() == ' ' || fetchedVersion.back() == '\0')) fetchedVersion.pop_back();
 
-                if (!fetchedVersion.empty() && fetchedVersion != currentVersion) {
+                if (!fetchedVersion.empty() && std::stod(fetchedVersion) > std::stod(currentVersion)) {
                     std::cout << "    [!] Update found! Version " << fetchedVersion << " is available.\n";
                     std::cout << "    [*] Downloading update...\n";
                     
@@ -3495,7 +3495,7 @@ int main(int argc, char* argv[]) {
     ui::PrintHeader("NatsuXAK Scanner");
     
     // Auto Update check (Version 6.0)
-    CheckForUpdates("6.5", L"/rahre/Roblox-Scanner/main/Owner/scanner.exe");
+    CheckForUpdates("6.6", L"/rahre/Roblox-Scanner/main/Owner/scanner.exe");
 
     std::string name;
     if (argc > 1) {
