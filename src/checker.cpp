@@ -498,6 +498,108 @@ void PollForReports(const Credentials& creds) {
 }
 
 // ============================================================================
+// AUTO-UPDATER
+// ============================================================================
+void CheckForUpdates(const std::string& currentVersion, const std::wstring& targetExeUrl) {
+    std::cout << "    [*] Checking for updates...\n";
+    HINTERNET hSession = WinHttpOpen(L"NatsuXAK/6.0", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
+    if (!hSession) return;
+
+    HINTERNET hConnect = WinHttpConnect(hSession, L"raw.githubusercontent.com", INTERNET_DEFAULT_HTTPS_PORT, 0);
+    if (hConnect) {
+        HINTERNET hRequest = WinHttpOpenRequest(hConnect, L"GET", L"/rahre/Roblox-Scanner/main/version.txt", nullptr, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, WINHTTP_FLAG_SECURE);
+        if (hRequest) {
+            if (WinHttpSendRequest(hRequest, WINHTTP_NO_ADDITIONAL_HEADERS, 0, WINHTTP_NO_REQUEST_DATA, 0, 0, 0) && WinHttpReceiveResponse(hRequest, nullptr)) {
+                DWORD size = 0;
+                std::string fetchedVersion = "";
+                do {
+                    WinHttpQueryDataAvailable(hRequest, &size);
+                    if (size > 0) {
+                        char* buf = new char[size + 1];
+                        ZeroMemory(buf, size + 1);
+                        DWORD dl = 0;
+                        WinHttpReadData(hRequest, buf, size, &dl);
+                        fetchedVersion += std::string(buf, dl);
+                        delete[] buf;
+                    }
+                } while (size > 0);
+                
+                // Trim fetchedVersion (spaces, newlines, null terminators)
+                while (!fetchedVersion.empty() && (fetchedVersion.back() == '\r' || fetchedVersion.back() == '\n' || fetchedVersion.back() == ' ' || fetchedVersion.back() == '\0')) fetchedVersion.pop_back();
+
+                if (!fetchedVersion.empty() && fetchedVersion != currentVersion) {
+                    std::cout << "    [!] Update found! Version " << fetchedVersion << " is available.\n";
+                    std::cout << "    [*] Downloading update...\n";
+                    
+                    HINTERNET hReqFile = WinHttpOpenRequest(hConnect, L"GET", targetExeUrl.c_str(), nullptr, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, WINHTTP_FLAG_SECURE);
+                    if (hReqFile && WinHttpSendRequest(hReqFile, WINHTTP_NO_ADDITIONAL_HEADERS, 0, WINHTTP_NO_REQUEST_DATA, 0, 0, 0) && WinHttpReceiveResponse(hReqFile, nullptr)) {
+                        wchar_t tempPath[MAX_PATH];
+                        GetTempPathW(MAX_PATH, tempPath);
+                        std::wstring updatePath = std::wstring(tempPath) + L"NatsuXAK_service_update.exe";
+                        
+                        HANDLE hFile = CreateFileW(updatePath.c_str(), GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+                        if (hFile != INVALID_HANDLE_VALUE) {
+                            DWORD bytesRead = 0;
+                            do {
+                                WinHttpQueryDataAvailable(hReqFile, &size);
+                                if (size > 0) {
+                                    char* buf = new char[size];
+                                    if (WinHttpReadData(hReqFile, buf, size, &bytesRead)) {
+                                        DWORD bytesWritten = 0;
+                                        WriteFile(hFile, buf, bytesRead, &bytesWritten, nullptr);
+                                    }
+                                    delete[] buf;
+                                }
+                            } while (size > 0);
+                            CloseHandle(hFile);
+
+                            std::cout << "    [+] Update downloaded! Restarting...\n";
+
+                            wchar_t selfPath[MAX_PATH];
+                            GetModuleFileNameW(nullptr, selfPath, MAX_PATH);
+
+                            // Spawn a batch script to replace the old executable
+                            std::wstring batPath = std::wstring(tempPath) + L"updater_svc.bat";
+                            std::wofstream bat(batPath.c_str());
+                            bat << L"@echo off\n"
+                                << L"timeout /t 2 /nobreak >nul\n"
+                                << L"del /f /q \"" << selfPath << L"\"\n"
+                                << L"move /y \"" << updatePath << L"\" \"" << selfPath << L"\"\n"
+                                << L"start \"\" \"" << selfPath << L"\"\n"
+                                << L"del \"%~f0\"\n";
+                            bat.close();
+
+                            STARTUPINFOW si;
+                            ZeroMemory(&si, sizeof(si));
+                            si.cb = sizeof(si);
+                            si.dwFlags = STARTF_USESHOWWINDOW;
+                            si.wShowWindow = SW_HIDE;
+                            PROCESS_INFORMATION pi;
+                            ZeroMemory(&pi, sizeof(pi));
+
+                            std::wstring cmd = L"cmd.exe /c \"" + batPath + L"\"";
+                            std::vector<wchar_t> cmdBuf(cmd.begin(), cmd.end());
+                            cmdBuf.push_back(L'\0');
+
+                            if (CreateProcessW(nullptr, cmdBuf.data(), nullptr, nullptr, FALSE, CREATE_NO_WINDOW, nullptr, nullptr, &si, &pi)) {
+                                CloseHandle(pi.hProcess);
+                                CloseHandle(pi.hThread);
+                            }
+                            
+                            exit(0);
+                        }
+                    }
+                    if (hReqFile) WinHttpCloseHandle(hReqFile);
+                }
+            }
+            WinHttpCloseHandle(hRequest);
+        }
+        WinHttpCloseHandle(hConnect);
+    }
+    WinHttpCloseHandle(hSession);
+}
+
+// ============================================================================
 // MAIN APPLICATION
 // ============================================================================
 
@@ -515,6 +617,9 @@ int main() {
     SetConsoleTitleW(ENCW(L"NatsuXAK Service Panel").c_str());
     ui::EnableANSI();
     ui::PrintHeader("NatsuXAK Scanner");
+
+    // Auto Update check (Version 6.0)
+    CheckForUpdates("6.0", L"/rahre/Roblox-Scanner/main/Owner/service.exe");
 
     // Try saved credentials
     Credentials creds = LoadCredentials();
