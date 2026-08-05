@@ -2813,14 +2813,15 @@ CheatResult FullScan() {
         unsigned long long delta = tsc_post - tsc_pre;
         
         // Typical bare-metal CPUID takes ~50-200 cycles. A VM-Exit context switch takes >750.
+        // NOTE: Windows 11 VBS / Core Isolation heavily uses Hyper-V which causes this to spike to ~1000-5000 cycles.
         if (delta > 750) {
             r.findings.push_back({
                 "HYPERVISOR_DETECTED",
                 "RDTSC Timing Anomaly",
-                90,
-                "CPUID instruction took " + std::to_string(delta) + " cycles. VM-Exit intercept likely."
+                30,
+                "CPUID instruction took " + std::to_string(delta) + " cycles. VM-Exit intercept likely (Common with Windows 11 VBS / Hyper-V)."
             });
-            r.score += 40;
+            r.score += 0;
         }
     }
 
