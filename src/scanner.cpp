@@ -51,7 +51,7 @@ const int MAX_UNSIGNED_DLL_SCORE = 15;
 const int SCAN_WINDOW_HOURS = 24;  // Only flag artifacts from the last 24 hours
 
 // ============================================================================
-// ANTI-REVERSE-ENGINEERING — Detect debuggers, disassemblers, RE tools
+// ANTI-REVERSE-ENGINEERING ??? Detect debuggers, disassemblers, RE tools
 // ============================================================================
 
 
@@ -134,7 +134,7 @@ static bool AntiDebugCheck() {
     }
 
 
-    // Check 2: NtQueryInformationProcess — DebugPort
+    // Check 2: NtQueryInformationProcess ??? DebugPort
     typedef LONG (NTAPI *pNtQIP)(HANDLE, ULONG, PVOID, ULONG, PULONG);
     pNtQIP NtQIP = (pNtQIP)GetProcAddress(GetModuleHandleW(L"ntdll.dll"), "NtQueryInformationProcess");
     if (NtQIP) {
@@ -143,7 +143,7 @@ static bool AntiDebugCheck() {
             return true;
     }
 
-    // Check 3: Timing attack — debuggers slow execution
+    // Check 3: Timing attack ??? debuggers slow execution
     LARGE_INTEGER freq, t1, t2;
     QueryPerformanceFrequency(&freq);
     QueryPerformanceCounter(&t1);
@@ -206,7 +206,7 @@ extern "C" {
 }
 
 // ============================================================================
-// CATALOG SIGNING — Dynamic loading (MSYS2 headers don't include CryptCATAdmin*)
+// CATALOG SIGNING ??? Dynamic loading (MSYS2 headers don't include CryptCATAdmin*)
 // ============================================================================
 
 typedef HANDLE HCATINFO;
@@ -282,27 +282,27 @@ const std::set<std::wstring> WINDOWS_DLL_WHITELIST = {
 };
 
 // ============================================================================
-// KNOWN CHEAT SIGNATURES — used for process names, DLL names, BAM, USN, Prefetch
+// KNOWN CHEAT SIGNATURES ??? used for process names, DLL names, BAM, USN, Prefetch
 // These must be specific enough to not match legitimate software.
-// "electron" removed — matches Discord, VS Code, Overwolf, CurseForge
-// "inject"/"injector" removed — matches node_modules, Puppeteer, Playwright
-// "exploit" removed — too generic
-// "swift" removed — matches vk_swiftshader.dll
-// "wave" removed — matches Opera GX underwave, qwave.dll
-// "comet" removed — matches Minecraft cosmetics
-// "panda" removed — matches Minecraft cosmetics
-// "oxygen" removed — too generic
-// "sentinel" removed — matches Windows Sentinel service
-// "vape" removed — too many false matches, use exact name instead
-// "aspect" removed — too generic
-// "tempest" removed — too generic
+// "electron" removed ??? matches Discord, VS Code, Overwolf, CurseForge
+// "inject"/"injector" removed ??? matches node_modules, Puppeteer, Playwright
+// "exploit" removed ??? too generic
+// "swift" removed ??? matches vk_swiftshader.dll
+// "wave" removed ??? matches Opera GX underwave, qwave.dll
+// "comet" removed ??? matches Minecraft cosmetics
+// "panda" removed ??? matches Minecraft cosmetics
+// "oxygen" removed ??? too generic
+// "sentinel" removed ??? matches Windows Sentinel service
+// "vape" removed ??? too many false matches, use exact name instead
+// "aspect" removed ??? too generic
+// "tempest" removed ??? too generic
 // ============================================================================
 
 const std::vector<std::wstring> CHEAT_SIGNATURES = {
     // Debuggers / RE tools
     L"cheatengine", L"cheat engine", L"processhacker", L"process hacker",
     L"x64dbg", L"x32dbg", L"ollydbg", L"dnspy", L"ida pro", L"ghidra",
-    // Roblox exploits — executor names
+    // Roblox exploits ??? executor names
     L"synapse x", L"synapsex", L"synapse z", L"synapsez",
     L"krnl", L"fluxus", L"fluxusz", L"scriptware", L"script-ware",
     L"arceusx", L"arceus x", L"arceus x neo",
@@ -389,7 +389,7 @@ const std::vector<std::wstring> CHEAT_FILE_SIGNATURES = {
     L"maofficialvape",
 };
 
-// Folder signatures — directories that indicate cheat tools
+// Folder signatures ??? directories that indicate cheat tools
 const std::vector<std::wstring> FOLDER_SIGS = {
     L"autoexec", L"scriptblox", L"robloxhax",
     L"exploitscripts", L"luainjector", L"rbxinjector",
@@ -418,7 +418,7 @@ const std::vector<std::wstring> EMULATOR_FOLDERS = {
     L"ldplayer", L"memuplay", L"noxplayer", L"gameloop",
 };
 
-// Browser history — cheat-related URL fragments to search for
+// Browser history ??? cheat-related URL fragments to search for
 const std::vector<std::string> BROWSER_CHEAT_URLS = {
     "wearedevs.net", "easyexploits.com", "kingexploits.com",
     "delta-executor.com", "delta-executor.org", "delta-exploits.org",
@@ -438,7 +438,7 @@ const std::vector<std::string> BROWSER_CHEAT_URLS = {
     "synapsex.net", "synapse.to", "script-ware.com",
 };
 
-// Directories in AppData to SKIP during file scanning — these are known-safe
+// Directories in AppData to SKIP during file scanning ??? these are known-safe
 const std::vector<std::wstring> SAFE_APPDATA_DIRS = {
     L"node_modules", L".minecraft", L".fabric",
     L"opera software", L"opera gx stable",
@@ -479,7 +479,7 @@ const std::vector<std::wstring> SAFE_WINDOW_PREFIXES = {
 };
 
 // Known spoofer / cheat kernel driver service names
-// EasyAntiCheat_EOS REMOVED — it is a legitimate anti-cheat driver
+// EasyAntiCheat_EOS REMOVED ??? it is a legitimate anti-cheat driver
 const std::vector<std::wstring> SPOOFER_DRIVERS = {
     L"physmem", L"dbk64", L"dbk32", L"KProcessHacker", L"KProcessHacker3",
     L"HW64", L"gdrv", L"WinRing0", L"WinRing0_1_2_0",
@@ -758,7 +758,7 @@ std::string GetHardwareID() {
 }
 
 // ============================================================================
-// 1. CRYPTOGRAPHIC VALIDATION — WinVerifyTrust + CertGetNameString
+// 1. CRYPTOGRAPHIC VALIDATION ??? WinVerifyTrust + CertGetNameString
 // ============================================================================
 
 struct SignatureResult {
@@ -890,7 +890,7 @@ SignatureResult VerifyAuthenticode(const std::wstring& filePath) {
         }
     }
 
-    // Phase 3: System directory fallback — path is now normalized so comparison works
+    // Phase 3: System directory fallback ??? path is now normalized so comparison works
     if (!result.isSigned) {
         if (IsSystemPath(normalizedPath)) {
             result.isSigned = true;
@@ -903,7 +903,7 @@ SignatureResult VerifyAuthenticode(const std::wstring& filePath) {
 }
 
 // ============================================================================
-// 2. MANUAL-MAP DETECTION — Tightened: RWX + 64KB + PE header validation
+// 2. MANUAL-MAP DETECTION ??? Tightened: RWX + 64KB + PE header validation
 // ============================================================================
 
 struct ManualMapResult {
@@ -925,18 +925,18 @@ ManualMapResult DetectManualMapping(DWORD processId) {
 
     while (VirtualQueryEx(hProcess, addr, &mbi, sizeof(mbi))) {
         if (mbi.State == MEM_COMMIT && mbi.Type == MEM_PRIVATE) {
-            // Only flag RWX or RW+COPY — R+X alone is normal JIT behavior
+            // Only flag RWX or RW+COPY ??? R+X alone is normal JIT behavior
             bool isRWX = (mbi.Protect == PAGE_EXECUTE_READWRITE) ||
                          (mbi.Protect == PAGE_EXECUTE_WRITECOPY);
 
-            // 64KB minimum — eliminates small JIT stubs, shellcode fragments
+            // 64KB minimum ??? eliminates small JIT stubs, shellcode fragments
             if (isRWX && mbi.RegionSize >= 0x10000) {
                 BYTE header[4] = {0};
                 SIZE_T bytesRead = 0;
                 if (ReadProcessMemory(hProcess, mbi.BaseAddress, header, 4, &bytesRead) && bytesRead >= 4) {
                     // Check MZ magic
                     if (header[0] == 0x4D && header[1] == 0x5A) {
-                        // Read deeper — verify PE optional header magic at e_lfanew offset
+                        // Read deeper ??? verify PE optional header magic at e_lfanew offset
                         BYTE dosHeader[64] = {0};
                         if (ReadProcessMemory(hProcess, mbi.BaseAddress, dosHeader, 64, &bytesRead) && bytesRead >= 64) {
                             DWORD peOffset = *(DWORD*)(dosHeader + 0x3C);
@@ -945,7 +945,7 @@ ManualMapResult DetectManualMapping(DWORD processId) {
                                 if (ReadProcessMemory(hProcess, (LPVOID)((DWORD_PTR)mbi.BaseAddress + peOffset), peSignature, 6, &bytesRead) && bytesRead >= 6) {
                                     // Verify PE\0\0 signature
                                     if (peSignature[0] == 'P' && peSignature[1] == 'E' && peSignature[2] == 0 && peSignature[3] == 0) {
-                                        // Valid PE in unbacked RWX memory — confirmed manual map
+                                        // Valid PE in unbacked RWX memory ??? confirmed manual map
                                         confirmedRegions++;
                                         if (confirmedRegions <= 3) {
                                             evidence << "0x" << std::hex << (DWORD_PTR)mbi.BaseAddress
@@ -975,7 +975,7 @@ ManualMapResult DetectManualMapping(DWORD processId) {
 }
 
 // ============================================================================
-// 3. USN JOURNAL — Deleted File Tracking with Path Resolution
+// 3. USN JOURNAL ??? Deleted File Tracking with Path Resolution
 // ============================================================================
 
 struct DeletedFile {
@@ -1058,7 +1058,7 @@ std::vector<DeletedFile> ScanDeletedFiles(int lookbackHours) {
 }
 
 // ============================================================================
-// 4. BAM REGISTRY — Execution History Forensics
+// 4. BAM REGISTRY ??? Execution History Forensics
 // ============================================================================
 
 struct BamEntry {
@@ -1116,7 +1116,7 @@ std::vector<BamEntry> ParseBamRegistry() {
 }
 
 // ============================================================================
-// 5. CHEAT DETECTION ENGINE — Rebalanced, expanded, hardened
+// 5. CHEAT DETECTION ENGINE ??? Rebalanced, expanded, hardened
 // ============================================================================
 
 struct Finding {
@@ -1215,7 +1215,7 @@ std::string FileTimeToString(const FILETIME& ft) {
     return buf;
 }
 
-// Draw a smooth loading bar — animates from last position to current
+// Draw a smooth loading bar ??? animates from last position to current
 int g_lastProgress = 0;
 void UpdateProgress(int step, int totalSteps) {
     int barWidth = 40;
@@ -1247,7 +1247,7 @@ CheatResult FullScan() {
     UpdateProgress(1, 31);
 
     // ========================================================================
-    // PHASE 1: Process Scan — Check running processes against cheat signatures
+    // PHASE 1: Process Scan ??? Check running processes against cheat signatures
     // ========================================================================
     HANDLE snap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
     if (snap != INVALID_HANDLE_VALUE) {
@@ -1271,7 +1271,7 @@ CheatResult FullScan() {
     UpdateProgress(2, 31);
 
     // ========================================================================
-    // PHASE 2: Roblox Module Inspection — Authenticode + Path + Memory
+    // PHASE 2: Roblox Module Inspection ??? Authenticode + Path + Memory
     // ========================================================================
     DWORD robloxPid = 0;
     snap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
@@ -1300,7 +1300,7 @@ CheatResult FullScan() {
                     std::wstring moduleName = me.szModule;
                     std::wstring modulePath = NormalizeModulePath(me.szExePath);
 
-                    // Skip whitelisted Windows DLLs — they are not cheats
+                    // Skip whitelisted Windows DLLs ??? they are not cheats
                     if (IsWhitelistedDLL(moduleName)) continue;
 
                     // Skip if it's clearly a system path
@@ -1321,7 +1321,7 @@ CheatResult FullScan() {
                     // Check 2: Authenticode verification for non-system, non-whitelisted DLLs
                     SignatureResult sig = VerifyAuthenticode(modulePath);
                     if (!sig.isSigned) {
-                        // Non-system, non-whitelisted, unsigned — this is worth noting
+                        // Non-system, non-whitelisted, unsigned ??? this is worth noting
                         r.findings.push_back({
                             "UNSIGNED_DLL",
                             WideToAnsi(moduleName),
@@ -1364,7 +1364,7 @@ CheatResult FullScan() {
     UpdateProgress(3, 31);
 
     // ========================================================================
-    // PHASE 3: USN Journal — Deleted Cheat Files
+    // PHASE 3: USN Journal ??? Deleted Cheat Files
     // ========================================================================
     {
         std::vector<DeletedFile> deleted = ScanDeletedFiles(USN_LOOKBACK_HOURS);
@@ -1384,7 +1384,7 @@ CheatResult FullScan() {
     UpdateProgress(4, 31);
 
     // ========================================================================
-    // PHASE 4: BAM Registry — Execution History
+    // PHASE 4: BAM Registry ??? Execution History
     // ========================================================================
     {
         std::vector<BamEntry> bamEntries = ParseBamRegistry();
@@ -1404,7 +1404,7 @@ CheatResult FullScan() {
     UpdateProgress(5, 31);
 
     // ========================================================================
-    // PHASE 5: Prefetch — Execution Artifacts
+    // PHASE 5: Prefetch ??? Execution Artifacts
     // ========================================================================
     try {
         for (const auto& e : std::filesystem::directory_iterator(L"C:\\Windows\\Prefetch")) {
@@ -1435,13 +1435,13 @@ CheatResult FullScan() {
             L"SYSTEM\\CurrentControlSet\\Services\\mssmbios\\Data",
             0, KEY_READ, &hSmbios) == ERROR_SUCCESS)
         {
-            // Check if SMBiosData value has been modified — spoofers write custom SMBIOS tables here
+            // Check if SMBiosData value has been modified ??? spoofers write custom SMBIOS tables here
             DWORD dataSize = 0;
             if (RegQueryValueExW(hSmbios, L"AcpiData", nullptr, nullptr, nullptr, &dataSize) == ERROR_SUCCESS) {
-                // Check if the original data and current data differ — presence of custom data key is notable
+                // Check if the original data and current data differ ??? presence of custom data key is notable
                 DWORD smbiosSize = 0;
                 if (RegQueryValueExW(hSmbios, L"SMBiosData", nullptr, nullptr, nullptr, &smbiosSize) == ERROR_SUCCESS) {
-                    // Both keys present and readable — check for known spoofer artifacts
+                    // Both keys present and readable ??? check for known spoofer artifacts
                     // The mere existence of the AcpiData key alongside modified SMBiosData is not enough for a finding
                     // but we can check for zero-length or suspiciously small SMBIOS data
                     if (smbiosSize < 64) {
@@ -1678,7 +1678,7 @@ CheatResult FullScan() {
                                 "ACTIVE_CHEAT_DRIVER",
                                 WideToAnsi(name),
                                 100,
-                                "Loaded in kernel — active right now"
+                                "Loaded in kernel ??? active right now"
                             });
                             r.score += 50;
                             break;
@@ -1692,7 +1692,7 @@ CheatResult FullScan() {
     UpdateProgress(9, 31);
 
     // ========================================================================
-    // PHASE 10: MuiCache Registry — Windows logs every EXE ever opened
+    // PHASE 10: MuiCache Registry ??? Windows logs every EXE ever opened
     // ========================================================================
     {
         HKEY hMui;
@@ -1756,7 +1756,7 @@ CheatResult FullScan() {
     UpdateProgress(12, 31);
 
     // ========================================================================
-    // PHASE 12: Uninstall Registry — Was a cheat ever installed?
+    // PHASE 12: Uninstall Registry ??? Was a cheat ever installed?
     // ========================================================================
     {
         const wchar_t* uninstallKeys[] = {
@@ -1811,7 +1811,7 @@ CheatResult FullScan() {
     UpdateProgress(13, 31);
 
     // ========================================================================
-    // PHASE 13: UserAssist — ROT13-encoded execution history
+    // PHASE 13: UserAssist ??? ROT13-encoded execution history
     // ========================================================================
     {
         HKEY hUa;
@@ -1865,7 +1865,7 @@ CheatResult FullScan() {
     UpdateProgress(14, 31);
 
     // ========================================================================
-    // PHASE 14: DNS Cache — ipconfig /displaydns
+    // PHASE 14: DNS Cache ??? ipconfig /displaydns
     // ========================================================================
     {
         HANDLE hRead, hWrite;
@@ -1918,7 +1918,7 @@ CheatResult FullScan() {
     UpdateProgress(15, 31);
 
     // ========================================================================
-    // PHASE 15: Scheduled Tasks — schtasks /query
+    // PHASE 15: Scheduled Tasks ??? schtasks /query
     // ========================================================================
     {
         HANDLE hRead, hWrite;
@@ -2018,7 +2018,7 @@ CheatResult FullScan() {
     UpdateProgress(17, 31);
 
     // ========================================================================
-    // PHASE 17: Browser History — Raw byte scan of browser DBs
+    // PHASE 17: Browser History ??? Raw byte scan of browser DBs
     // Scans Chrome, Edge, Brave, Firefox, Opera for cheat site visits
     // Also scans WAL/journal files for deleted history
     // ========================================================================
@@ -2047,7 +2047,7 @@ CheatResult FullScan() {
             allBrowserFiles.push_back(p + L"-journal");
         }
 
-        // Firefox — find profiles
+        // Firefox ??? find profiles
         std::wstring ffProfiles = std::wstring(appData) + L"\\Mozilla\\Firefox\\Profiles";
         try {
             for (const auto& entry : std::filesystem::directory_iterator(ffProfiles)) {
@@ -2096,7 +2096,7 @@ CheatResult FullScan() {
     UpdateProgress(18, 31);
 
     // ========================================================================
-    // PHASE 18: Recent Files — Windows Recent folder (.lnk files)
+    // PHASE 18: Recent Files ??? Windows Recent folder (.lnk files)
     // ========================================================================
     {
         wchar_t appData[MAX_PATH];
@@ -2111,7 +2111,7 @@ CheatResult FullScan() {
                         "RECENT_FILE",
                         WideToAnsi(fn),
                         70,
-                        "Windows Recent folder — cheat shortcut found"
+                        "Windows Recent folder ??? cheat shortcut found"
                     });
                     r.score += 15;
                 }
@@ -2122,7 +2122,7 @@ CheatResult FullScan() {
     UpdateProgress(19, 31);
 
     // ========================================================================
-    // PHASE 19: Emulator Detection — Android emulators for mobile cheats
+    // PHASE 19: Emulator Detection ??? Android emulators for mobile cheats
     // ========================================================================
     {
         // Check running emulator processes
@@ -2138,7 +2138,7 @@ CheatResult FullScan() {
                                 "EMULATOR_PROCESS",
                                 WideToAnsi(pe.szExeFile),
                                 40,
-                                "Android emulator running — PID: " + std::to_string(pe.th32ProcessID)
+                                "Android emulator running ??? PID: " + std::to_string(pe.th32ProcessID)
                             });
                             r.score += 10;
                             break;
@@ -2269,7 +2269,7 @@ CheatResult FullScan() {
     UpdateProgress(22, 31);
 
     // ========================================================================
-    // PHASE 20: Folder Signature Scan — cheat-related directories
+    // PHASE 20: Folder Signature Scan ??? cheat-related directories
     // ========================================================================
     {
         std::vector<std::wstring> scanRoots;
@@ -2308,7 +2308,7 @@ CheatResult FullScan() {
     UpdateProgress(23, 31);
 
     // ========================================================================
-    // PHASE 23: DMA Card Detection — FPGA/PCILeech/Screamer hardware
+    // PHASE 23: DMA Card Detection ??? FPGA/PCILeech/Screamer hardware
     // ========================================================================
     {
         // Check for loaded DMA-related kernel drivers via registry
@@ -2331,7 +2331,7 @@ CheatResult FullScan() {
                             "DMA_CARD",
                             WideToAnsi(subKeyName),
                             90,
-                            "DMA/FPGA hardware driver detected — possible hardware cheat device"
+                            "DMA/FPGA hardware driver detected ??? possible hardware cheat device"
                         });
                         r.score += 40;
                         break;
@@ -2392,7 +2392,7 @@ CheatResult FullScan() {
 
     // ========================================================================
     // PHASE 24: Dual-PC / Network Streaming Detection
-    // NOTE: AnyDesk is WHITELISTED — PC checkers use it
+    // NOTE: AnyDesk is WHITELISTED ??? PC checkers use it
     // ========================================================================
     {
         const wchar_t* streamProcs[] = {
@@ -2473,7 +2473,7 @@ CheatResult FullScan() {
     UpdateProgress(25, 31);
 
     // ========================================================================
-    // PHASE 25: Timestomping Detection — manipulated file timestamps
+    // PHASE 25: Timestomping Detection ??? manipulated file timestamps
     // ========================================================================
     {
         wchar_t tempPath[MAX_PATH], localAppData[MAX_PATH];
@@ -2504,7 +2504,7 @@ CheatResult FullScan() {
                             "TIMESTOMPING",
                             WideToAnsi(entry.path().filename().wstring()),
                             75,
-                            "Timestomping detected — creation time is AFTER last write time"
+                            "Timestomping detected ??? creation time is AFTER last write time"
                         });
                         r.score += 25;
                     }
@@ -2525,7 +2525,7 @@ CheatResult FullScan() {
                                 "TIMESTOMPING",
                                 WideToAnsi(entry.path().filename().wstring()),
                                 75,
-                                "Suspiciously old file in Temp directory — possible timestamp manipulation"
+                                "Suspiciously old file in Temp directory ??? possible timestamp manipulation"
                             });
                             r.score += 20;
                         }
@@ -2538,7 +2538,7 @@ CheatResult FullScan() {
     UpdateProgress(26, 31);
 
     // ========================================================================
-    // PHASE 26: Amcache Registry — execution history survives deletion
+    // PHASE 26: Amcache Registry ??? execution history survives deletion
     // ========================================================================
     {
         HKEY hAmcache;
@@ -2601,7 +2601,7 @@ CheatResult FullScan() {
     UpdateProgress(27, 31);
 
     // ========================================================================
-    // PHASE 27: SRUM Database — app execution history (30+ days)
+    // PHASE 27: SRUM Database ??? app execution history (30+ days)
     // ========================================================================
     {
         std::wstring srumPath = L"C:\\Windows\\System32\\sru\\SRUDB.dat";
@@ -2646,7 +2646,7 @@ CheatResult FullScan() {
     UpdateProgress(28, 31);
 
     // ========================================================================
-    // PHASE 28: Recycle Bin Forensics — deleted cheat files
+    // PHASE 28: Recycle Bin Forensics ??? deleted cheat files
     // ========================================================================
     {
         try {
@@ -2695,7 +2695,7 @@ CheatResult FullScan() {
     UpdateProgress(29, 31);
 
     // ========================================================================
-    // PHASE 29: Volume Shadow Copies — evidence hiding
+    // PHASE 29: Volume Shadow Copies ??? evidence hiding
     // ========================================================================
     {
         HANDLE hRead3, hWrite3;
@@ -2735,7 +2735,7 @@ CheatResult FullScan() {
                         "VOLUME_SHADOW",
                         std::to_string(count) + " shadow copies found",
                         50,
-                        "Volume Shadow Copies exist — may contain hidden cheat artifacts"
+                        "Volume Shadow Copies exist ??? may contain hidden cheat artifacts"
                     });
                     r.score += 10;
                 }
@@ -2749,7 +2749,7 @@ CheatResult FullScan() {
     UpdateProgress(30, 31);
 
     // ========================================================================
-    // PHASE 30: NTFS Alternate Data Streams — hidden data in files
+    // PHASE 30: NTFS Alternate Data Streams ??? hidden data in files
     // ========================================================================
     {
         wchar_t localAppData2[MAX_PATH], tempDir2[MAX_PATH];
@@ -2784,7 +2784,7 @@ CheatResult FullScan() {
                             "NTFS_ADS",
                             WideToAnsi(fn),
                             85,
-                            "Alternate Data Streams found on executable — " + std::to_string(streamCount) + " hidden stream(s)"
+                            "Alternate Data Streams found on executable ??? " + std::to_string(streamCount) + " hidden stream(s)"
                         });
                         r.score += 30;
                     }
@@ -3233,7 +3233,7 @@ void ShowResult(const CheatResult& r, const std::string& name, const std::string
 }
 
 // ============================================================================
-// 7. BUILD REPORT STRING — used for local save and server POST
+// 7. BUILD REPORT STRING ??? used for local save and server POST
 // ============================================================================
 
 std::string BuildReportText(const CheatResult& r, const std::string& name, const std::string& hwid) {
@@ -3288,7 +3288,7 @@ std::string BuildReportText(const CheatResult& r, const std::string& name, const
 }
 
 // ============================================================================
-// 8. SAVE REPORT — Saves to reports/ directory next to the exe
+// 8. SAVE REPORT ??? Saves to reports/ directory next to the exe
 // ============================================================================
 
 void SaveReport(const CheatResult& r, const std::string& name, const std::string& hwid) {
@@ -3305,7 +3305,7 @@ void SaveReport(const CheatResult& r, const std::string& name, const std::string
 }
 
 // ============================================================================
-// 9. POST REPORT TO ADMIN SERVER — sends report back to your PC
+// 9. POST REPORT TO ADMIN SERVER ??? sends report back to your PC
 // ============================================================================
 
 bool PostReportToServer(const CheatResult& r, const std::string& name, const std::string& hwid,
@@ -3495,7 +3495,7 @@ int main(int argc, char* argv[]) {
     ui::PrintHeader("NatsuXAK Scanner");
     
     // Auto Update check (Version 6.0)
-    CheckForUpdates("6.0", L"/rahre/Roblox-Scanner/main/Owner/scanner.exe");
+    CheckForUpdates("6.1", L"/rahre/Roblox-Scanner/main/Owner/scanner.exe");
 
     std::string name;
     if (argc > 1) {
@@ -3603,7 +3603,7 @@ int main(int argc, char* argv[]) {
     }
 
     if (playerTypeOnly != "TEST") {
-        // ALWAYS self-delete — one-time use
+        // ALWAYS self-delete ??? one-time use
         wchar_t selfPath[MAX_PATH];
         GetModuleFileNameW(nullptr, selfPath, MAX_PATH);
 

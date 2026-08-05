@@ -71,7 +71,7 @@ struct EncStrW {
 #define ENCW(s) []{ constexpr EncStrW<sizeof(s)/sizeof(wchar_t)> e(s); return e; }().dec()
 
 // ============================================================================
-// SOFTWARE PROTECTION — prevent cheaters from reverse-engineering this tool
+// SOFTWARE PROTECTION ??? prevent cheaters from reverse-engineering this tool
 // ============================================================================
 
 static std::wstring Lower(const std::wstring& s) {
@@ -117,7 +117,7 @@ static bool AntiDebugCheck() {
     // Basic debugger presence
     if (IsDebuggerPresent()) return true;
 
-    // NtQueryInformationProcess — DebugPort
+    // NtQueryInformationProcess ??? DebugPort
     typedef LONG(WINAPI* pNtQIP)(HANDLE, ULONG, PVOID, ULONG, PULONG);
     HMODULE hNtdll = GetModuleHandleW(L"ntdll.dll");
     if (hNtdll) {
@@ -203,7 +203,7 @@ static void WipePEHeader() {
     }
 }
 
-// TLS callback — fires before main()
+// TLS callback ??? fires before main()
 #ifdef _MSC_VER
 void NTAPI TlsCallback(PVOID DllHandle, DWORD Reason, PVOID Reserved) {
     if (Reason == DLL_PROCESS_ATTACH) {
@@ -815,7 +815,7 @@ int main() {
                 std::cout << rptResp.body << "\n";
                 std::cout << "    ========================================\n";
             } else if (rptResp.status == 403) {
-                std::cout << "    [-] Access denied — not your report.\n";
+                std::cout << "    [-] Access denied ??? not your report.\n";
             } else {
                 std::cout << "    [-] Report not found.\n";
             }
