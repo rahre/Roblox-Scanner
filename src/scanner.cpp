@@ -85,17 +85,8 @@ struct EncStrW {
 };
 #define ENCW(s) []{ constexpr EncStrW<sizeof(s)/sizeof(wchar_t)> e(s); return e; }().dec()
 
-#ifdef _MSC_VER
-#pragma comment(linker, "/INCLUDE:_tls_used")
-#pragma const_seg(".CRT$XLB")
-extern "C" const PIMAGE_TLS_CALLBACK tls_callback = [](PVOID, DWORD reason, PVOID) {
-    if (reason == DLL_PROCESS_ATTACH && IsDebuggerPresent()) {
-        // Silently exit to prevent debugging, without showing a confusing fake .NET error
-        ExitProcess(1);
-    }
-};
-#pragma const_seg()
-#endif
+// TLS callback removed to reduce antivirus false positives
+// Anti-debug checks are performed at runtime in main() instead
 
 // XOR obfuscation for sensitive strings (Rentry URL, server info)
 static std::string XorDecode(const char* data, int len, char key) {
@@ -105,88 +96,8 @@ static std::string XorDecode(const char* data, int len, char key) {
 }
 
 static bool AntiDebugCheck() {
-    // Check 1: IsDebuggerPresent
+    // Simplified check ??? only use IsDebuggerPresent to avoid AV false positives
     if (IsDebuggerPresent()) return true;
-    
-    BOOL isDebuggerPresent = FALSE;
-    CheckRemoteDebuggerPresent(GetCurrentProcess(), &isDebuggerPresent);
-    if (isDebuggerPresent) return true;
-
-    // Check 1.5: PEB NtGlobalFlag and Heap Flags
-#ifdef _WIN64
-    PBYTE pPeb = (PBYTE)__readgsqword(0x60);
-#else
-    PBYTE pPeb = (PBYTE)__readfsdword(0x30);
-#endif
-    PDWORD ntGlobalFlag = (PDWORD)((PBYTE)pPeb + (_WIN64 ? 0xBC : 0x68));
-    if (*ntGlobalFlag & 0x70) return true;
-
-    PVOID heap = (PVOID)(*(PDWORD_PTR)((PBYTE)pPeb + (_WIN64 ? 0x30 : 0x18)));
-    PDWORD forceFlags = (PDWORD)((PBYTE)heap + (_WIN64 ? 0x44 : 0x44)); // simplify checking
-    if (*forceFlags != 0) return true;
-
-    // Check 1.6: Hardware breakpoints
-    CONTEXT ctx = { 0 };
-    ctx.ContextFlags = CONTEXT_DEBUG_REGISTERS;
-    HANDLE hThread = GetCurrentThread();
-    if (GetThreadContext(hThread, &ctx)) {
-        if (ctx.Dr0 != 0 || ctx.Dr1 != 0 || ctx.Dr2 != 0 || ctx.Dr3 != 0) return true;
-    }
-
-
-    // Check 2: NtQueryInformationProcess ??? DebugPort
-    typedef LONG (NTAPI *pNtQIP)(HANDLE, ULONG, PVOID, ULONG, PULONG);
-    pNtQIP NtQIP = (pNtQIP)GetProcAddress(GetModuleHandleW(L"ntdll.dll"), "NtQueryInformationProcess");
-    if (NtQIP) {
-        ULONG_PTR debugPort = 0;
-        if (NtQIP(GetCurrentProcess(), 7, &debugPort, sizeof(debugPort), nullptr) == 0 && debugPort != 0)
-            return true;
-    }
-
-    // Check 3: Timing attack ??? debuggers slow execution
-    LARGE_INTEGER freq, t1, t2;
-    QueryPerformanceFrequency(&freq);
-    QueryPerformanceCounter(&t1);
-    Sleep(1);
-    QueryPerformanceCounter(&t2);
-    double elapsed = (double)(t2.QuadPart - t1.QuadPart) / freq.QuadPart;
-    if (elapsed > 0.5) return true;  // Should be ~1ms, not 500ms+
-
-    // Check 4: Check for known RE tool windows
-    const wchar_t* reWindows[] = {
-        L"x64dbg", L"x32dbg", L"OllyDbg", L"IDA",
-        L"Ghidra", L"dnSpy", L"Cheat Engine",
-        L"Process Hacker", L"Process Monitor",
-        nullptr
-    };
-    for (int i = 0; reWindows[i]; i++) {
-        if (FindWindowW(nullptr, reWindows[i])) return true;
-    }
-
-    // Check 5: Check for common RE tool processes
-    HANDLE snap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-    if (snap != INVALID_HANDLE_VALUE) {
-        PROCESSENTRY32W pe; pe.dwSize = sizeof(pe);
-        if (Process32FirstW(snap, &pe)) {
-            do {
-                std::wstring name(pe.szExeFile);
-                std::transform(name.begin(), name.end(), name.begin(), ::tolower);
-                if (name == L"x64dbg.exe" || name == L"x32dbg.exe" ||
-                    name == L"ollydbg.exe" || name == L"ida.exe" ||
-                    name == L"ida64.exe" || name == L"idaq.exe" ||
-                    name == L"ghidra.exe" || name == L"dnspy.exe" ||
-                    name == L"de4dot.exe" || name == L"dumpcap.exe" ||
-                    name == L"wireshark.exe" || name == L"fiddler.exe" ||
-                    name == L"httpdebuggerpro.exe" || name == L"procmon.exe" ||
-                    name == L"procmon64.exe") {
-                    CloseHandle(snap);
-                    return true;
-                }
-            } while (Process32NextW(snap, &pe));
-        }
-        CloseHandle(snap);
-    }
-
     return false;
 }
 
@@ -510,6 +421,279 @@ const std::vector<std::wstring> CHEAT_DOMAINS = {
     L"keybypass.net", L"linkvertise.com",
     L"v3rmillion.net", L"robloxhax.com",
 };
+
+// ============================================================================
+// CHEAT KNOWLEDGE BASE ??? Human-readable explanations for report output
+// Maps lowercase cheat name fragments to { short_type, description }
+// ============================================================================
+
+struct CheatInfo {
+    std::string type;        // e.g. "Script Executor", "Aimbot", "HWID Spoofer"
+    std::string explanation; // What it does and why it matters
+};
+
+std::string GetCheatExplanation(const std::string& text) {
+    std::string lower = text;
+    std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
+
+    // Script Executors / Injectors
+    if (lower.find("synapse x") != std::string::npos || lower.find("synapsex") != std::string::npos)
+        return "Synapse X ??? Premium Roblox script executor that injects Lua code into the game client";
+    if (lower.find("synapse z") != std::string::npos || lower.find("synapsez") != std::string::npos)
+        return "Synapse Z ??? Successor to Synapse X, a Roblox Lua script executor";
+    if (lower.find("sirhurt") != std::string::npos)
+        return "SirHurt ??? Paid Roblox script executor that uses DLL injection to run scripts in-game";
+    if (lower.find("krnl") != std::string::npos && lower.find("krnlss") == std::string::npos)
+        return "KRNL ??? Free Roblox executor that uses kernel-level techniques to inject scripts";
+    if (lower.find("krnlss") != std::string::npos)
+        return "KRNL DLL ??? Injected library from the KRNL script executor found inside Roblox memory";
+    if (lower.find("fluxus") != std::string::npos || lower.find("fluxusz") != std::string::npos)
+        return "Fluxus ??? Free Roblox Lua executor distributed through ad-gated downloads";
+    if (lower.find("solara") != std::string::npos)
+        return "Solara ??? Roblox Lua script executor that injects code into the game client";
+    if (lower.find("delta executor") != std::string::npos || lower.find("deltaexploit") != std::string::npos || lower.find("deltaexecutor") != std::string::npos || lower.find("delta exploit") != std::string::npos || lower.find("delta x") != std::string::npos)
+        return "Delta Executor ??? Popular mobile/PC Roblox script executor";
+    if (lower.find("arceus") != std::string::npos)
+        return "Arceus X ??? Roblox script executor originally designed for mobile, also available on PC";
+    if (lower.find("jjsploit") != std::string::npos || lower.find("jj exploit") != std::string::npos)
+        return "JJSploit ??? Free Roblox executor by WeAreDevs, known for bundling adware";
+    if (lower.find("trigon") != std::string::npos)
+        return "Trigon ??? Roblox Lua script executor with auto-attach capability";
+    if (lower.find("evon") != std::string::npos)
+        return "Evon ??? Roblox Lua executor that hooks into the game's scripting engine";
+    if (lower.find("nihon") != std::string::npos)
+        return "Nihon ??? Roblox script executor";
+    if (lower.find("krampus") != std::string::npos)
+        return "Krampus ??? Roblox script executor distributed via krampus.gg";
+    if (lower.find("furkultra") != std::string::npos || lower.find("furk ultra") != std::string::npos)
+        return "Furk Ultra ??? Roblox script executor";
+    if (lower.find("dansploit") != std::string::npos)
+        return "DanSploit ??? Roblox script executor";
+    if (lower.find("proxo") != std::string::npos)
+        return "Proxo ??? Roblox script executor";
+    if (lower.find("roexec") != std::string::npos || lower.find("ro-exec") != std::string::npos)
+        return "RoExec ??? Roblox script executor";
+    if (lower.find("cocoexploit") != std::string::npos || lower.find("coco exploit") != std::string::npos || lower.find("coco z") != std::string::npos)
+        return "Coco Exploit ??? Roblox script executor";
+    if (lower.find("zorara") != std::string::npos)
+        return "Zorara ??? Roblox script executor";
+    if (lower.find("cefacode") != std::string::npos)
+        return "CefaCode ??? Roblox script executor";
+    if (lower.find("vegax") != std::string::npos)
+        return "VegaX ??? Roblox script executor with custom UI";
+    if (lower.find("scriptware") != std::string::npos || lower.find("script-ware") != std::string::npos)
+        return "Script-Ware ??? Premium Roblox script executor with anti-detection features";
+    if (lower.find("xeno") != std::string::npos)
+        return "Xeno ??? Roblox script executor/injector";
+    if (lower.find("bunni") != std::string::npos)
+        return "Bunni ??? Roblox script executor";
+    if (lower.find("codex") != std::string::npos)
+        return "Codex ??? Roblox script executor";
+    if (lower.find("wave executor") != std::string::npos || lower.find("wave exploit") != std::string::npos)
+        return "Wave ??? Roblox script executor";
+    if (lower.find("velocity") != std::string::npos)
+        return "Velocity ??? Roblox script executor";
+    if (lower.find("hydrogen") != std::string::npos)
+        return "Hydrogen ??? Roblox Lua executor";
+    if (lower.find("celex") != std::string::npos)
+        return "Celex ??? Roblox script executor";
+    if (lower.find("alysse") != std::string::npos)
+        return "Alysse ??? Roblox script executor";
+    if (lower.find("luna executor") != std::string::npos)
+        return "Luna ??? Roblox script executor";
+    if (lower.find("zenith") != std::string::npos)
+        return "Zenith ??? Roblox script executor";
+    if (lower.find("neutron") != std::string::npos)
+        return "Neutron ??? Roblox script executor";
+    if (lower.find("incognito") != std::string::npos)
+        return "Incognito ??? Roblox script executor";
+    if (lower.find("horizon external") != std::string::npos)
+        return "Horizon ??? External Roblox cheat tool";
+    if (lower.find("celery") != std::string::npos)
+        return "Celery ??? Roblox script executor/injector";
+    if (lower.find("rc7") != std::string::npos)
+        return "RC7 ??? Legacy Roblox script executor";
+    if (lower.find("proto smasher") != std::string::npos)
+        return "Proto Smasher ??? Legacy Roblox script executor";
+    if (lower.find("calamari") != std::string::npos)
+        return "Calamari ??? Roblox script executor";
+    if (lower.find("valyse") != std::string::npos)
+        return "Valyse ??? Roblox script executor";
+    if (lower.find("nezur") != std::string::npos)
+        return "Nezur ??? Roblox script executor";
+    if (lower.find("seliware") != std::string::npos)
+        return "Seliware ??? Roblox script executor";
+    if (lower.find("oxygen") != std::string::npos)
+        return "Oxygen U ??? Roblox script executor";
+    if (lower.find("kiwi x") != std::string::npos || lower.find("kiwix") != std::string::npos)
+        return "Kiwi X ??? Roblox script executor";
+    if (lower.find("comet executor") != std::string::npos)
+        return "Comet ??? Roblox script executor";
+    if (lower.find("shadow executor") != std::string::npos)
+        return "Shadow ??? Roblox script executor";
+    if (lower.find("aspect executor") != std::string::npos)
+        return "Aspect ??? Roblox script executor";
+    if (lower.find("novaline") != std::string::npos)
+        return "Novaline ??? Roblox script executor";
+    if (lower.find("sigma executor") != std::string::npos)
+        return "Sigma ??? Roblox script executor";
+    if (lower.find("meteor executor") != std::string::npos)
+        return "Meteor ??? Roblox script executor";
+    if (lower.find("appleware") != std::string::npos)
+        return "Appleware ??? Roblox script executor";
+    if (lower.find("nexus executor") != std::string::npos)
+        return "Nexus ??? Roblox script executor";
+    if (lower.find("cryptic executor") != std::string::npos)
+        return "Cryptic ??? Roblox script executor";
+    if (lower.find("phantom executor") != std::string::npos)
+        return "Phantom ??? Roblox script executor";
+    if (lower.find("eclipse executor") != std::string::npos)
+        return "Eclipse ??? Roblox script executor";
+    if (lower.find("omega executor") != std::string::npos)
+        return "Omega ??? Roblox script executor";
+    if (lower.find("lx63") != std::string::npos)
+        return "LX63 ??? Roblox script executor";
+    if (lower.find("electron executor") != std::string::npos)
+        return "Electron ??? Roblox script executor";
+
+    // Aimbot / ESP / External Tools
+    if (lower.find("matcha") != std::string::npos)
+        return "Matcha ??? External aimbot/ESP overlay for Da Hood and other Roblox games";
+    if (lower.find("newui") != std::string::npos || lower.find("new ui") != std::string::npos)
+        return "NewUI (Matrix Hub) ??? External cheat client with aimbot, ESP, and triggerbot";
+    if (lower.find("oldui") != std::string::npos || lower.find("old ui") != std::string::npos)
+        return "OldUI (Matrix Hub) ??? Earlier version of Matrix Hub external cheat";
+    if (lower.find("matrixhub") != std::string::npos || lower.find("matrix hub") != std::string::npos || lower.find("matrix external") != std::string::npos)
+        return "Matrix Hub ??? External cheat tool with aimbot, ESP, and camlock for Roblox";
+    if (lower.find("aimmy") != std::string::npos)
+        return "Aimmy ??? AI-powered aimbot that uses screen capture to auto-aim";
+    if (lower.find("camlock") != std::string::npos)
+        return "Camlock ??? Camera lock exploit that forces aim onto nearby players";
+    if (lower.find("serotonin") != std::string::npos)
+        return "Serotonin ??? External Roblox cheat with aimbot and ESP";
+    if (lower.find("thunderaim") != std::string::npos || lower.find("thunder aim") != std::string::npos)
+        return "Thunder Aim ??? External aimbot for Roblox games";
+    if (lower.find("da hood aimbot") != std::string::npos || lower.find("da hood external") != std::string::npos || lower.find("dahood aimbot") != std::string::npos)
+        return "Da Hood Aimbot ??? External aimbot specifically designed for Da Hood";
+    if (lower.find("rivals aimbot") != std::string::npos || lower.find("rivals external") != std::string::npos || lower.find("rivals esp") != std::string::npos)
+        return "Rivals Cheat ??? External aimbot/ESP for the Roblox game Rivals";
+    if (lower.find("silent aim") != std::string::npos || lower.find("silentaim") != std::string::npos)
+        return "Silent Aim ??? Cheat that redirects bullets to hit targets without visually aiming";
+    if (lower.find("triggerbot") != std::string::npos)
+        return "Triggerbot ??? Automatically shoots when crosshair is over an enemy";
+    if (lower.find("hitbox expander") != std::string::npos || lower.find("hitbox exploit") != std::string::npos)
+        return "Hitbox Expander ??? Enlarges enemy hitboxes making them easier to hit";
+    if (lower.find("desync") != std::string::npos)
+        return "Desync Exploit ??? Manipulates network sync to make player appear in a different location";
+
+    // Debuggers / RE Tools
+    if (lower.find("cheatengine") != std::string::npos || lower.find("cheat engine") != std::string::npos)
+        return "Cheat Engine ??? Memory editor used to modify game values (speed, health, etc.)";
+    if (lower.find("processhacker") != std::string::npos || lower.find("process hacker") != std::string::npos)
+        return "Process Hacker ??? Advanced task manager used to inspect/modify running processes";
+    if (lower.find("x64dbg") != std::string::npos || lower.find("x32dbg") != std::string::npos)
+        return "x64dbg/x32dbg ??? Debugger used for reverse engineering executables";
+    if (lower.find("extreme injector") != std::string::npos)
+        return "Extreme Injector ??? DLL injector tool used to load cheat DLLs into game processes";
+
+    // HWID Spoofers
+    if (lower.find("hwid spoofer") != std::string::npos || lower.find("hwid-spoofer") != std::string::npos || lower.find("hwid changer") != std::string::npos)
+        return "HWID Spoofer ??? Tool that fakes hardware identifiers to evade hardware bans";
+    if (lower.find("easyhwid") != std::string::npos)
+        return "EasyHWID ??? Hardware ID spoofing tool to bypass hardware bans";
+    if (lower.find("permanentspoofer") != std::string::npos)
+        return "PermanentSpoofer ??? HWID spoofing tool that persists across reboots";
+    if (lower.find("ruinspoofer") != std::string::npos)
+        return "RuinSpoofer ??? Hardware ID spoofing tool";
+    if (lower.find("qlitech") != std::string::npos)
+        return "QliTech ??? HWID spoofer and anti-cheat bypass tool";
+    if (lower.find("volumeid") != std::string::npos)
+        return "VolumeID ??? Disk serial number changer used to evade hardware bans";
+    if (lower.find("kdmapper") != std::string::npos)
+        return "KDMapper ??? Kernel driver mapper used to load unsigned cheat drivers into Windows";
+    if (lower.find("pcihide") != std::string::npos)
+        return "PCIHide ??? Tool that hides PCI devices from anti-cheat detection";
+    if (lower.find("serial changer") != std::string::npos)
+        return "Serial Changer ??? Hardware serial number modification tool";
+    if (lower.find("mac address changer") != std::string::npos)
+        return "MAC Address Changer ??? Network adapter identifier spoofing tool";
+
+    // Websites
+    if (lower.find("wearedevs") != std::string::npos)
+        return "WeAreDevs ??? Cheat distribution website known for hosting Roblox exploits";
+    if (lower.find("linkvertise") != std::string::npos)
+        return "Linkvertise ??? Ad-gateway commonly used to monetize cheat downloads";
+    if (lower.find("whatexpsare") != std::string::npos)
+        return "WhatExpsAre ??? Website listing and distributing Roblox exploit tools";
+    if (lower.find("scriptblox") != std::string::npos)
+        return "ScriptBlox ??? Platform for sharing and downloading Roblox cheat scripts";
+    if (lower.find("v3rmillion") != std::string::npos)
+        return "V3rmillion ??? Forum community centered around Roblox exploiting";
+    if (lower.find("robloxhax") != std::string::npos)
+        return "RobloxHax ??? Roblox cheat distribution website";
+    if (lower.find("easyexploits") != std::string::npos)
+        return "EasyExploits ??? Roblox exploit API and distribution platform";
+    if (lower.find("kingexploits") != std::string::npos)
+        return "KingExploits ??? Roblox exploit distribution website";
+    if (lower.find("keybypass") != std::string::npos)
+        return "KeyBypass ??? Service for bypassing cheat tool key verification systems";
+
+    // Bootstrappers (informational)
+    if (lower.find("bloxstrap") != std::string::npos)
+        return "Bloxstrap ??? Alternative Roblox launcher (not a cheat, but often used alongside them)";
+    if (lower.find("fishstrap") != std::string::npos)
+        return "Fishstrap ??? Alternative Roblox bootstrapper";
+    if (lower.find("voidstrap") != std::string::npos)
+        return "Voidstrap ??? Alternative Roblox bootstrapper";
+    if (lower.find("frostrap") != std::string::npos)
+        return "Frostrap ??? Alternative Roblox bootstrapper";
+    if (lower.find("macaw") != std::string::npos)
+        return "Macaw ??? Alternative Roblox bootstrapper";
+
+    // Emulators
+    if (lower.find("bluestacks") != std::string::npos)
+        return "BlueStacks ??? Android emulator (can be used to run mobile cheats on PC)";
+    if (lower.find("ldplayer") != std::string::npos || lower.find("ldconsole") != std::string::npos)
+        return "LDPlayer ??? Android emulator";
+    if (lower.find("mumu") != std::string::npos)
+        return "MuMu Player ??? Android emulator";
+    if (lower.find("memuplay") != std::string::npos || lower.find("memu") != std::string::npos)
+        return "MEmu ??? Android emulator";
+    if (lower.find("nox") != std::string::npos)
+        return "Nox Player ??? Android emulator";
+    if (lower.find("gameloop") != std::string::npos)
+        return "GameLoop ??? Android emulator by Tencent";
+
+    // Technical findings
+    if (lower.find("networkaddress override") != std::string::npos || lower.find("mac") != std::string::npos && lower.find("spoof") != std::string::npos)
+        return "MAC Address Spoofing ??? Network adapter ID was manually changed to evade hardware bans";
+    if (lower.find("etw") != std::string::npos && lower.find("blind") != std::string::npos)
+        return "ETW Blinding ??? Windows telemetry was patched to hide cheat activity from anti-cheat";
+    if (lower.find("manual map") != std::string::npos || lower.find("unbacked") != std::string::npos)
+        return "Manual Mapping ??? Cheat DLL was loaded directly into memory without using standard Windows APIs to avoid detection";
+    if (lower.find("secure boot") != std::string::npos)
+        return "Secure Boot Disabled ??? Allows unsigned kernel drivers (cheat drivers) to load at boot";
+    if (lower.find("shadow cop") != std::string::npos)
+        return "Volume Shadow Copies ??? System restore points that may contain hidden cheat artifacts";
+    if (lower.find("timestomp") != std::string::npos)
+        return "Timestomping ??? File timestamps were manipulated to hide when cheats were installed";
+    if (lower.find("hosts") != std::string::npos && lower.find("roblox") != std::string::npos)
+        return "Hosts File Block ??? Roblox telemetry domains were blocked to prevent cheat detection";
+    if (lower.find("byovd") != std::string::npos || lower.find("vulnerable driver") != std::string::npos)
+        return "BYOVD Attack ??? A vulnerable signed driver was loaded to gain kernel access for cheats";
+    if (lower.find("rdtsc") != std::string::npos || lower.find("cpuid") != std::string::npos)
+        return "RDTSC Timing Anomaly ??? CPU timing suggests a hypervisor or VM (may be normal on Windows 11 with VBS)";
+    if (lower.find("alternate data stream") != std::string::npos || lower.find("ntfs") != std::string::npos && lower.find("ads") != std::string::npos)
+        return "NTFS Alternate Data Streams ??? Hidden data attached to files, possibly concealing cheat payloads";
+    if (lower.find("srum") != std::string::npos)
+        return "SRUM Database ??? Windows System Resource Usage Monitor recorded cheat execution history";
+    if (lower.find("dma") != std::string::npos || lower.find("fpga") != std::string::npos || lower.find("pcileech") != std::string::npos)
+        return "DMA/FPGA Hardware ??? Direct Memory Access card that can read/write game memory from another device";
+    if (lower.find("usb") != std::string::npos && lower.find("plug") != std::string::npos)
+        return "USB Device Activity ??? USB storage device was connected recently (may have been used to transfer cheats)";
+
+    return ""; // No explanation available
+}
 
 // ============================================================================
 // UTILITIES
@@ -3135,8 +3319,7 @@ std::string GetBroadCategory(const Finding& f) {
     std::wstring lowerEvid = Lower(AnsiToWide(f.evidence));
     std::string cat = f.category;
 
-    if (cat == "BROWSER_HISTORY" || cat == "DELETED_BROWSER_HISTORY") return "Search History";
-
+    // Bootstrappers
     if (cat == "BOOTSTRAPPER" || 
         lowerDesc.find(L"bloxstrap") != std::wstring::npos || lowerEvid.find(L"bloxstrap") != std::wstring::npos ||
         lowerDesc.find(L"voidstrap") != std::wstring::npos || lowerEvid.find(L"voidstrap") != std::wstring::npos ||
@@ -3145,18 +3328,175 @@ std::string GetBroadCategory(const Finding& f) {
         return "Bootstrappers";
     }
 
-    if (cat == "VIRTUAL_MACHINE_MAC" || cat == "DMA_CARD" || cat == "STREAMING_PORT" || cat == "DUAL_PC_STREAMING" ||
+    // Browser & Search History
+    if (cat == "BROWSER_HISTORY" || cat == "DELETED_BROWSER_HISTORY" || cat == "DNS_CACHE" || cat == "DISCORD_RPC_CACHE")
+        return "Browser & Search History";
+
+    // Registry Traces
+    if (cat == "BAM_REGISTRY" || cat == "MUICACHE" || cat == "APPCOMPAT" || cat == "UNINSTALL_KEY" || cat == "USERASSIST" || cat == "AMCACHE")
+        return "Registry Traces";
+
+    // HWID Spoofers & Bypass Tools
+    if (cat == "MAC_SPOOF" || cat == "HWID_SPOOFER" || cat == "CHEAT_DRIVER" || cat == "ACTIVE_CHEAT_DRIVER" ||
+        cat == "VIRTUAL_MACHINE_MAC" || cat == "DMA_CARD" || cat == "STREAMING_PORT" || cat == "DUAL_PC_STREAMING" ||
         lowerDesc.find(L"bypass") != std::wstring::npos || lowerEvid.find(L"bypass") != std::wstring::npos ||
         lowerDesc.find(L"spoofer") != std::wstring::npos || lowerEvid.find(L"spoofer") != std::wstring::npos ||
-        lowerDesc.find(L"dma") != std::wstring::npos || lowerEvid.find(L"dma") != std::wstring::npos) {
-        return "Bypassers";
+        lowerDesc.find(L"dma") != std::wstring::npos || lowerEvid.find(L"dma") != std::wstring::npos ||
+        lowerDesc.find(L"networkaddress") != std::wstring::npos)
+        return "HWID Spoofers & Bypass Tools";
+
+    // Deleted & Hidden Evidence
+    if (cat == "DELETED_CHEAT" || cat == "RECYCLE_BIN" || cat == "TIMESTOMPING" || cat == "NTFS_ADS" || cat == "VOLUME_SHADOW" || cat == "DELETED_BROWSER_HISTORY")
+        return "Deleted & Hidden Evidence";
+
+    // System & Hardware
+    if (cat == "HYPERVISOR_DETECTED" || cat == "VULNERABLE_BOOT_STATE" || cat == "ETW_BLINDING" || cat == "BYOVD_EXPLOIT" ||
+        cat == "TELEMETRY_BLOCK" || cat == "VIRTUAL_MACHINE" || cat == "EMULATOR_PROCESS" || cat == "EMULATOR_INSTALLED" ||
+        cat == "REMOTE_DESKTOP_TOOL" || cat == "USB_PLUG_PULL")
+        return "System & Hardware";
+
+    // Network & Anti-Forensics
+    if (cat == "FIREWALL_RULE" || cat == "SCHEDULED_TASK" || cat == "SRUM_DATABASE")
+        return "Network & Anti-Forensics";
+
+    // Default: Injectors & Executors (processes, files, prefetch, crash logs, etc.)
+    return "Injectors & Executors";
+}
+
+// ============================================================================
+// ANALYSIS SUMMARY BUILDER
+// ============================================================================
+
+std::string BuildSummary(const CheatResult& r) {
+    if (r.findings.empty()) return "No cheating indicators were found on this system.";
+
+    std::ostringstream s;
+    int executors = 0, aimbots = 0, spoofers = 0, browserHits = 0, registryHits = 0;
+    int deletedEvidence = 0, systemFlags = 0, discordHits = 0, crashLogs = 0;
+    std::vector<std::string> executorNames, aimbotNames, spooferNames, siteNames;
+
+    for (const auto& f : r.findings) {
+        std::string cat = f.category;
+        std::string combined = f.description + " " + f.evidence;
+        std::string explanation = GetCheatExplanation(combined);
+
+        // Classify findings
+        if (cat == "PROCESS" || cat == "PREFETCH" || cat == "MUICACHE" || cat == "APPCOMPAT" ||
+            cat == "USERASSIST" || cat == "BAM_REGISTRY" || cat == "AMCACHE" ||
+            cat == "DLL_INJECTION" || cat == "MANUAL_MAPPING" || cat == "ROBLOX_CRASH_LOG" ||
+            cat == "INJECTOR_REMNANT" || cat == "CHEAT_FOLDER" || cat == "WINDOW_TITLE" || cat == "WINDOW_CLASS") {
+            // Check if it's an aimbot/external vs executor
+            std::string lwr = combined;
+            std::transform(lwr.begin(), lwr.end(), lwr.begin(), ::tolower);
+            if (lwr.find("aimbot") != std::string::npos || lwr.find("aimmy") != std::string::npos ||
+                lwr.find("matcha") != std::string::npos || lwr.find("camlock") != std::string::npos ||
+                lwr.find("matrix") != std::string::npos || lwr.find("newui") != std::string::npos ||
+                lwr.find("oldui") != std::string::npos || lwr.find("triggerbot") != std::string::npos ||
+                lwr.find("silent aim") != std::string::npos || lwr.find("esp") != std::string::npos ||
+                lwr.find("serotonin") != std::string::npos || lwr.find("thunderaim") != std::string::npos) {
+                aimbots++;
+                if (!explanation.empty() && aimbotNames.size() < 3) {
+                    std::string name = explanation.substr(0, explanation.find(" \xe2\x80\x94"));
+                    bool dup = false; for (auto& n : aimbotNames) if (n == name) dup = true;
+                    if (!dup) aimbotNames.push_back(name);
+                }
+            } else {
+                executors++;
+                if (!explanation.empty() && executorNames.size() < 4) {
+                    std::string name = explanation.substr(0, explanation.find(" \xe2\x80\x94"));
+                    bool dup = false; for (auto& n : executorNames) if (n == name) dup = true;
+                    if (!dup) executorNames.push_back(name);
+                }
+            }
+        }
+        if (cat == "MAC_SPOOF" || cat == "HWID_SPOOFER" || cat == "CHEAT_DRIVER" || cat == "ACTIVE_CHEAT_DRIVER") {
+            spoofers++;
+            if (!explanation.empty() && spooferNames.size() < 2) {
+                std::string name = explanation.substr(0, explanation.find(" \xe2\x80\x94"));
+                bool dup = false; for (auto& n : spooferNames) if (n == name) dup = true;
+                if (!dup) spooferNames.push_back(name);
+            }
+        }
+        if (cat == "BROWSER_HISTORY" || cat == "DELETED_BROWSER_HISTORY") {
+            browserHits++;
+            if (!explanation.empty() && siteNames.size() < 3) {
+                std::string name = explanation.substr(0, explanation.find(" \xe2\x80\x94"));
+                bool dup = false; for (auto& n : siteNames) if (n == name) dup = true;
+                if (!dup) siteNames.push_back(name);
+            }
+        }
+        if (cat == "DISCORD_RPC_CACHE") discordHits++;
+        if (cat == "ROBLOX_CRASH_LOG") crashLogs++;
+        if (cat == "DELETED_CHEAT" || cat == "RECYCLE_BIN" || cat == "TIMESTOMPING") deletedEvidence++;
+        if (cat == "ETW_BLINDING" || cat == "VULNERABLE_BOOT_STATE" || cat == "BYOVD_EXPLOIT" || cat == "TELEMETRY_BLOCK") systemFlags++;
     }
 
-    if (cat != "SYSTEM" && cat != "NETWORK") {
-        return "Injectors / Executors";
+    s << "This player has " << r.findings.size() << " cheat indicator" << (r.findings.size() != 1 ? "s" : "") << " across multiple evidence sources. ";
+
+    if (executors > 0) {
+        s << executors << " script executor" << (executors != 1 ? "s were" : " was") << " found";
+        if (!executorNames.empty()) {
+            s << " (";
+            for (size_t i = 0; i < executorNames.size(); i++) {
+                if (i > 0) s << (i == executorNames.size()-1 ? " and " : ", ");
+                s << executorNames[i];
+            }
+            s << ")";
+        }
+        s << ". ";
     }
 
-    return "Other Findings";
+    if (aimbots > 0) {
+        s << aimbots << " aimbot/external tool" << (aimbots != 1 ? "s were" : " was") << " detected";
+        if (!aimbotNames.empty()) {
+            s << " (";
+            for (size_t i = 0; i < aimbotNames.size(); i++) {
+                if (i > 0) s << (i == aimbotNames.size()-1 ? " and " : ", ");
+                s << aimbotNames[i];
+            }
+            s << ")";
+        }
+        s << ". ";
+    }
+
+    if (browserHits > 0) {
+        s << "Browser history shows visits to " << browserHits << " cheat-related site" << (browserHits != 1 ? "s" : "");
+        if (!siteNames.empty()) {
+            s << " (";
+            for (size_t i = 0; i < siteNames.size(); i++) {
+                if (i > 0) s << ", ";
+                s << siteNames[i];
+            }
+            s << ")";
+        }
+        s << ". ";
+    }
+
+    if (discordHits > 0) s << "Discord logs confirm active usage of cheat tools. ";
+    if (crashLogs > 0) s << "Roblox crash logs show cheats were injected during gameplay. ";
+
+    if (spoofers > 0) {
+        s << "HWID spoofing was detected";
+        if (!spooferNames.empty()) {
+            s << " (";
+            for (size_t i = 0; i < spooferNames.size(); i++) {
+                if (i > 0) s << ", ";
+                s << spooferNames[i];
+            }
+            s << ")";
+        }
+        s << ", indicating attempts to evade hardware bans. ";
+    }
+
+    if (deletedEvidence > 0) s << deletedEvidence << " deleted/hidden cheat artifact" << (deletedEvidence != 1 ? "s were" : " was") << " recovered from forensic analysis. ";
+    if (systemFlags > 0) s << "System-level anti-detection techniques were found. ";
+
+    if (r.score >= 80) s << "The volume and variety of evidence leaves no reasonable doubt.";
+    else if (r.score >= 50) s << "The evidence strongly suggests cheating but additional review may be warranted.";
+    else if (r.score >= 25) s << "Some suspicious indicators were found but are not conclusive on their own.";
+    else s << "No significant cheating indicators were detected.";
+
+    return s.str();
 }
 
 void ShowResult(const CheatResult& r, const std::string& name, const std::string& hwid) {
@@ -3198,13 +3538,17 @@ void ShowResult(const CheatResult& r, const std::string& name, const std::string
         std::map<std::string, std::vector<Finding>> grouped;
         for (const auto& f : r.findings) grouped[GetBroadCategory(f)].push_back(f);
         
-        std::vector<std::string> order = {"Bootstrappers", "Injectors / Executors", "Bypassers", "Search History", "Other Findings"};
+        std::vector<std::string> order = {
+            "Bootstrappers", "Injectors & Executors", "HWID Spoofers & Bypass Tools",
+            "Registry Traces", "Browser & Search History", "Deleted & Hidden Evidence",
+            "System & Hardware", "Network & Anti-Forensics"
+        };
 
         for (const auto& grpName : order) {
             if (grouped.find(grpName) != grouped.end() && !grouped[grpName].empty()) {
-                std::string upperName = grpName;
-                for (auto & c: upperName) c = tolower(c);
-                std::cout << "    [" << upperName << "]\n";
+                std::string displayName = grpName;
+                for (auto & c: displayName) c = tolower(c);
+                std::cout << "    [" << displayName << "]\n";
                 for (const auto& f : grouped[grpName]) {
                     std::string conf;
                     if (f.confidence >= 90) conf = ui::RED + "[CONFIRMED]";
@@ -3214,13 +3558,37 @@ void ShowResult(const CheatResult& r, const std::string& name, const std::string
                     else conf = ui::GRAY + "[INFO]";
                     
                     std::cout << "      " << conf << ui::RESET << " " << f.description << "\n";
-                    if (!f.evidence.empty()) std::cout << "          " << ui::DARK_GOLD << f.evidence << ui::RESET << "\n";
+                    // Show cheat explanation
+                    std::string explanation = GetCheatExplanation(f.description + " " + f.evidence);
+                    if (!explanation.empty())
+                        std::cout << "          " << ui::GRAY << ">> " << explanation << ui::RESET << "\n";
+                    if (!f.evidence.empty())
+                        std::cout << "          " << ui::DARK_GOLD << f.evidence << ui::RESET << "\n";
                     std::cout << "\n";
                 }
                 std::cout << "\n";
             }
         }
         std::cout << "    " << ui::DARK_GOLD << std::string(56, '-') << ui::RESET << "\n\n";
+
+        // Analysis Summary
+        std::cout << "    " << ui::GOLD << "ANALYSIS SUMMARY:" << ui::RESET << "\n";
+        std::string summary = BuildSummary(r);
+        // Word-wrap at ~65 chars with indent
+        size_t lineLen = 0;
+        std::cout << "    ";
+        std::istringstream words(summary);
+        std::string word;
+        while (words >> word) {
+            if (lineLen + word.length() + 1 > 60 && lineLen > 0) {
+                std::cout << "\n    ";
+                lineLen = 0;
+            }
+            if (lineLen > 0) { std::cout << " "; lineLen++; }
+            std::cout << word;
+            lineLen += word.length();
+        }
+        std::cout << "\n\n";
     }
 
     std::cout << "    " << ui::GOLD << std::string(56, '=') << ui::RESET << "\n";
@@ -3250,13 +3618,17 @@ std::string BuildReportText(const CheatResult& r, const std::string& name, const
     
     std::map<std::string, std::vector<Finding>> grouped;
     for (const auto& f : r.findings) grouped[GetBroadCategory(f)].push_back(f);
-    std::vector<std::string> order = {"Bootstrappers", "Injectors / Executors", "Bypassers", "Search History", "Other Findings"};
+    std::vector<std::string> order = {
+        "Bootstrappers", "Injectors & Executors", "HWID Spoofers & Bypass Tools",
+        "Registry Traces", "Browser & Search History", "Deleted & Hidden Evidence",
+        "System & Hardware", "Network & Anti-Forensics"
+    };
 
     for (const auto& grpName : order) {
         if (grouped.find(grpName) != grouped.end() && !grouped[grpName].empty()) {
-            std::string upperName = grpName;
-            for (auto & c: upperName) c = tolower(c);
-            rpt << "[" << upperName << "]\n";
+            std::string displayName = grpName;
+            for (auto & c: displayName) c = tolower(c);
+            rpt << "[" << displayName << "]\n";
             for (const auto& f : grouped[grpName]) {
                 std::string conf;
                 if (f.confidence >= 90) conf = "CONFIRMED";
@@ -3266,6 +3638,9 @@ std::string BuildReportText(const CheatResult& r, const std::string& name, const
                 else conf = "INFO";
                 
                 rpt << "  [" << conf << "] " << f.description << "\n";
+                std::string explanation = GetCheatExplanation(f.description + " " + f.evidence);
+                if (!explanation.empty())
+                    rpt << "              >> " << explanation << "\n";
                 if (!f.evidence.empty()) rpt << "              " << f.evidence << "\n";
                 rpt << "\n";
             }
@@ -3276,6 +3651,10 @@ std::string BuildReportText(const CheatResult& r, const std::string& name, const
     if (r.findings.empty()) {
         rpt << "  No cheating indicators found.\n";
     }
+
+    // Analysis Summary
+    rpt << "\nANALYSIS SUMMARY:\n";
+    rpt << BuildSummary(r) << "\n";
 
     rpt << "\n========================\n";
     rpt << "VERDICT: " << r.verdict << "\n";
@@ -3501,7 +3880,7 @@ int main(int argc, char* argv[]) {
     ui::PrintHeader("NatsuXAK Scanner");
     
     // Auto Update check (Version 6.0)
-    CheckForUpdates("7.1", L"/rahre/Roblox-Scanner/main/Owner/scanner.exe");
+    CheckForUpdates("7.2", L"/rahre/Roblox-Scanner/main/Owner/scanner.exe");
 
     std::string name;
     if (argc > 1) {

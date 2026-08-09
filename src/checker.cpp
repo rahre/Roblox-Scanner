@@ -114,83 +114,8 @@ static bool ValidateParentProcess() {
 }
 
 static bool AntiDebugCheck() {
-    // Basic debugger presence
+    // Simplified check ??? only use IsDebuggerPresent to avoid AV false positives
     if (IsDebuggerPresent()) return true;
-
-    // NtQueryInformationProcess ??? DebugPort
-    typedef LONG(WINAPI* pNtQIP)(HANDLE, ULONG, PVOID, ULONG, PULONG);
-    HMODULE hNtdll = GetModuleHandleW(L"ntdll.dll");
-    if (hNtdll) {
-        pNtQIP NtQIP = (pNtQIP)GetProcAddress(hNtdll, "NtQueryInformationProcess");
-        if (NtQIP) {
-            ULONG_PTR debugPort = 0;
-            if (NtQIP(GetCurrentProcess(), 7, &debugPort, sizeof(debugPort), nullptr) == 0) {
-                if (debugPort != 0) return true;
-            }
-        }
-    }
-
-    // Hardware breakpoint detection
-    CONTEXT ctx = {0};
-    ctx.ContextFlags = CONTEXT_DEBUG_REGISTERS;
-    if (GetThreadContext(GetCurrentThread(), &ctx)) {
-        if (ctx.Dr0 || ctx.Dr1 || ctx.Dr2 || ctx.Dr3) return true;
-    }
-
-    // PEB NtGlobalFlag
-#ifdef _WIN64
-    PPEB pPeb = (PPEB)__readgsqword(0x60);
-#else
-    PPEB pPeb = (PPEB)__readfsdword(0x30);
-#endif
-    if (pPeb) {
-        DWORD ntGlobalFlag = *(DWORD*)((BYTE*)pPeb + 0xBC);
-#ifndef _WIN64
-        ntGlobalFlag = *(DWORD*)((BYTE*)pPeb + 0x68);
-#endif
-        if (ntGlobalFlag & 0x70) return true;
-    }
-
-    // Timing attack
-    LARGE_INTEGER freq, start, end;
-    QueryPerformanceFrequency(&freq);
-    QueryPerformanceCounter(&start);
-    Sleep(1);
-    QueryPerformanceCounter(&end);
-    double elapsed = (double)(end.QuadPart - start.QuadPart) / freq.QuadPart;
-    if (elapsed > 0.5) return true;
-
-    // RE tool process scan
-    const wchar_t* reTools[] = {
-        L"x64dbg.exe", L"x32dbg.exe", L"ollydbg.exe", L"ida.exe", L"ida64.exe",
-        L"idag.exe", L"idag64.exe", L"idaw.exe", L"idaw64.exe", L"idaq.exe",
-        L"idaq64.exe", L"windbg.exe", L"ghidra.exe", L"ghidrarun.exe",
-        L"processhacker.exe", L"procmon.exe", L"procmon64.exe",
-        L"wireshark.exe", L"fiddler.exe", L"httpdebugger.exe",
-        L"cheatengine-x86_64.exe", L"cheatengine-i386.exe",
-        L"dnspy.exe", L"de4dot.exe", L"ilspy.exe",
-        L"pestudio.exe", L"scylla.exe", L"scylla_x64.exe", L"scylla_x86.exe",
-        L"protection_id.exe", L"importrec.exe",
-        nullptr
-    };
-
-    HANDLE hSnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-    if (hSnap != INVALID_HANDLE_VALUE) {
-        PROCESSENTRY32W pe2; pe2.dwSize = sizeof(pe2);
-        if (Process32FirstW(hSnap, &pe2)) {
-            do {
-                std::wstring exeName = Lower(pe2.szExeFile);
-                for (int i = 0; reTools[i]; i++) {
-                    if (exeName == Lower(reTools[i])) {
-                        CloseHandle(hSnap);
-                        return true;
-                    }
-                }
-            } while (Process32NextW(hSnap, &pe2));
-        }
-        CloseHandle(hSnap);
-    }
-
     return false;
 }
 
@@ -203,23 +128,8 @@ static void WipePEHeader() {
     }
 }
 
-// TLS callback ??? fires before main()
-#ifdef _MSC_VER
-void NTAPI TlsCallback(PVOID DllHandle, DWORD Reason, PVOID Reserved) {
-    if (Reason == DLL_PROCESS_ATTACH) {
-        if (IsDebuggerPresent()) {
-            MessageBoxW(nullptr, L"This application requires .NET Framework 4.8 or later.\nPlease install it from microsoft.com and try again.",
-                        L"Runtime Error", MB_ICONERROR);
-            ExitProcess(1);
-        }
-    }
-}
-#pragma comment(linker, "/INCLUDE:_tls_used")
-#pragma comment(linker, "/INCLUDE:p_tls_callback")
-#pragma const_seg(".CRT$XLB")
-extern "C" PIMAGE_TLS_CALLBACK p_tls_callback = TlsCallback;
-#pragma const_seg()
-#endif
+// // TLS callback removed to reduce antivirus false positives
+// Anti-debug checks are performed at runtime in main() instead
 
 // ============================================================================
 // UTILITY FUNCTIONS
@@ -618,14 +528,14 @@ int main() {
         return 1;
     }
 
-    WipePEHeader();
+    // WipePEHeader(); // Disabled to reduce AV false positives
 
     SetConsoleTitleW(ENCW(L"NatsuXAK Service Panel").c_str());
     ui::EnableANSI();
     ui::PrintHeader("NatsuXAK Scanner");
 
     // Auto Update check (Version 6.0)
-    CheckForUpdates("7.1", L"/rahre/Roblox-Scanner/main/Owner/service.exe");
+    CheckForUpdates("7.2", L"/rahre/Roblox-Scanner/main/Owner/service.exe");
 
     // Try saved credentials
     Credentials creds = LoadCredentials();
