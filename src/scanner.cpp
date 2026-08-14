@@ -211,7 +211,7 @@ const std::set<std::wstring> WINDOWS_DLL_WHITELIST = {
 
 const std::vector<std::wstring> CHEAT_SIGNATURES = {
     // Debuggers / RE tools
-    L"cheatengine", L"cheat engine", L"processhacker", L"process hacker",
+    L"cheatengine", L"cheat engine",
     L"x64dbg", L"x32dbg", L"ollydbg", L"dnspy", L"ida pro", L"ghidra",
     // Roblox exploits ??? executor names
     L"synapse x", L"synapsex", L"synapse z", L"synapsez",
@@ -221,7 +221,7 @@ const std::vector<std::wstring> CHEAT_SIGNATURES = {
     L"evon", L"evon executor", L"nihon", L"krampus",
     L"furkultra", L"furk ultra", L"dansploit", L"proxo",
     L"macsploit", L"roexec", L"sirhurt", L"cocoexploit", L"coco exploit",
-    L"zorara", L"cefacode", L"vegax", L"solara", L"solara executor",
+    L"zorara", L"cefacode", L"vegax", L"solara", L"solara executor", L"potassium",
     L"delta executor", L"deltaexploit", L"delta exploit", L"delta x",
     L"xeno executor", L"xeno injector", L"xenoinjector",
     L"bunni executor", L"bunni exploit",
@@ -266,7 +266,7 @@ const std::vector<std::wstring> CHEAT_SIGNATURES = {
 
 const std::vector<std::wstring> CHEAT_FILE_SIGNATURES = {
     // 100+ file signatures
-    L"solara", L"fluxus", L"fluxusz", L"krnl", L"jjsploit",
+    L"solara", L"fluxus", L"fluxusz", L"krnl", L"jjsploit", L"potassium",
     L"trigon", L"synapsex", L"synapsez", L"sirhurt",
     L"arceusx", L"evon", L"dansploit", L"roexec",
     L"nihon", L"krampus", L"furkultra", L"cocoexploit",
@@ -291,7 +291,7 @@ const std::vector<std::wstring> CHEAT_FILE_SIGNATURES = {
     // Lua scripts
     L"autoexec", L"autoattach",
     // Original entries
-    L"cheatengine", L"cheat engine", L"processhacker", L"process hacker",
+    L"cheatengine", L"cheat engine",
     L"wearedevs",
     L"rc7", L"proto smasher",
     L"valyse", L"nezur",
@@ -392,11 +392,11 @@ const std::vector<std::wstring> SAFE_WINDOW_PREFIXES = {
 // Known spoofer / cheat kernel driver service names
 // EasyAntiCheat_EOS REMOVED ??? it is a legitimate anti-cheat driver
 const std::vector<std::wstring> SPOOFER_DRIVERS = {
-    L"physmem", L"dbk64", L"dbk32", L"KProcessHacker", L"KProcessHacker3",
+    L"physmem", L"dbk64", L"dbk32",
     L"HW64", L"gdrv", L"WinRing0", L"WinRing0_1_2_0",
     L"cpuz141", L"AsrDrv106",
     L"NTIOLib_X64", L"DirectIo64", L"GIO",
-    L"RTCore64", L"IOMAP64",
+    L"IOMAP64",
     L"EneTechIo64", L"MsIo64", L"WinIo",
     L"inpoutx64", L"kdmapper", L"capcom",
     L"AsrSetupDrv106", L"atszio64",
@@ -451,6 +451,10 @@ std::string GetCheatExplanation(const std::string& text) {
         return "Fluxus ??? Free Roblox Lua executor distributed through ad-gated downloads";
     if (lower.find("solara") != std::string::npos)
         return "Solara ??? Roblox Lua script executor that injects code into the game client";
+    if (lower.find("potassium") != std::string::npos)
+        return "Potassium ??? Roblox script executor";
+    if (lower.find("injector") != std::string::npos && lower.find("injector_remnant") == std::string::npos)
+        return "Generic Injector ??? Might be a Roblox or Discord injector, check with the user manually to be sure";
     if (lower.find("delta executor") != std::string::npos || lower.find("deltaexploit") != std::string::npos || lower.find("deltaexecutor") != std::string::npos || lower.find("delta exploit") != std::string::npos || lower.find("delta x") != std::string::npos)
         return "Delta Executor ??? Popular mobile/PC Roblox script executor";
     if (lower.find("arceus") != std::string::npos)
@@ -589,8 +593,8 @@ std::string GetCheatExplanation(const std::string& text) {
     // Debuggers / RE Tools
     if (lower.find("cheatengine") != std::string::npos || lower.find("cheat engine") != std::string::npos)
         return "Cheat Engine ??? Memory editor used to modify game values (speed, health, etc.)";
-    if (lower.find("processhacker") != std::string::npos || lower.find("process hacker") != std::string::npos)
-        return "Process Hacker ??? Advanced task manager used to inspect/modify running processes";
+    if (lower.find("system informer") != std::string::npos)
+        return "System Informer ??? Advanced task manager used to inspect/modify running processes";
     if (lower.find("x64dbg") != std::string::npos || lower.find("x32dbg") != std::string::npos)
         return "x64dbg/x32dbg ??? Debugger used for reverse engineering executables";
     if (lower.find("extreme injector") != std::string::npos)
@@ -1803,7 +1807,7 @@ CheatResult FullScan() {
                                     "INJECTOR_REMNANT",
                                     WideToAnsi(filename),
                                     85,
-                                    "Path: " + WideToAnsi(fullPath)
+                                    GetPathAgeCategory(fullPath) + " Path: " + WideToAnsi(fullPath)
                                 });
                                 r.score += 30;
                             }
@@ -3282,7 +3286,139 @@ CheatResult FullScan() {
         }
     }
 
-    UpdateProgress(39, 39);    // ========================================================================
+    // ========================================================================
+    // PHASE 40: Windows Defender Exclusions
+    // ========================================================================
+    {
+        HKEY hKey;
+        if (RegOpenKeyExW(HKEY_LOCAL_MACHINE, L"SOFTWARE\\Microsoft\\Windows Defender\\Exclusions\\Paths", 0, KEY_READ, &hKey) == ERROR_SUCCESS) {
+            DWORD index = 0;
+            wchar_t valueName[MAX_PATH];
+            DWORD valueNameSize = MAX_PATH;
+            DWORD type;
+            while (RegEnumValueW(hKey, index, valueName, &valueNameSize, nullptr, &type, nullptr, nullptr) == ERROR_SUCCESS) {
+                std::wstring pathStr(valueName);
+                std::wstring lower = pathStr;
+                std::transform(lower.begin(), lower.end(), lower.begin(), ::towlower);
+                
+                if (MatchesCheatSignature(lower) || MatchesCheatFileSignature(lower)) {
+                    r.findings.push_back({
+                        "DEFENDER_EXCLUSION",
+                        "Defender Exclusion Override",
+                        95,
+                        GetPathAgeCategory(pathStr) + " Path: " + WideToAnsi(pathStr)
+                    });
+                    r.score += 40;
+                }
+                
+                valueNameSize = MAX_PATH;
+                index++;
+            }
+            RegCloseKey(hKey);
+        }
+    }
+
+    // ========================================================================
+    // PHASE 41: Archive Extraction History (WinRAR / 7-Zip)
+    // ========================================================================
+    {
+        HKEY hKey;
+        // WinRAR ArcHistory
+        if (RegOpenKeyExW(HKEY_CURRENT_USER, L"Software\\WinRAR\\ArcHistory", 0, KEY_READ, &hKey) == ERROR_SUCCESS) {
+            DWORD index = 0;
+            wchar_t valueName[MAX_PATH];
+            DWORD valueNameSize = MAX_PATH;
+            DWORD type;
+            BYTE data[MAX_PATH * 2];
+            DWORD dataSize = sizeof(data);
+            while (RegEnumValueW(hKey, index, valueName, &valueNameSize, nullptr, &type, data, &dataSize) == ERROR_SUCCESS) {
+                if (type == REG_SZ) {
+                    std::wstring pathStr((wchar_t*)data);
+                    std::wstring lower = pathStr;
+                    std::transform(lower.begin(), lower.end(), lower.begin(), ::towlower);
+                    
+                    if (MatchesCheatSignature(lower) || MatchesCheatFileSignature(lower)) {
+                        r.findings.push_back({
+                            "ARCHIVE_HISTORY",
+                            "WinRAR Archive History",
+                            80,
+                            "Path: " + WideToAnsi(pathStr)
+                        });
+                        r.score += 25;
+                    }
+                }
+                valueNameSize = MAX_PATH;
+                dataSize = sizeof(data);
+                index++;
+            }
+            RegCloseKey(hKey);
+        }
+        // 7-Zip History
+        if (RegOpenKeyExW(HKEY_CURRENT_USER, L"Software\\7-Zip\\Compression", 0, KEY_READ, &hKey) == ERROR_SUCCESS) {
+            DWORD type;
+            BYTE data[4096];
+            DWORD dataSize = sizeof(data);
+            if (RegQueryValueExW(hKey, L"ArcHistory", nullptr, &type, data, &dataSize) == ERROR_SUCCESS && type == REG_MULTI_SZ) {
+                wchar_t* strPtr = (wchar_t*)data;
+                while (*strPtr) {
+                    std::wstring pathStr(strPtr);
+                    std::wstring lower = pathStr;
+                    std::transform(lower.begin(), lower.end(), lower.begin(), ::towlower);
+                    
+                    if (MatchesCheatSignature(lower) || MatchesCheatFileSignature(lower)) {
+                        r.findings.push_back({
+                            "ARCHIVE_HISTORY",
+                            "7-Zip Archive History",
+                            80,
+                            "Path: " + WideToAnsi(pathStr)
+                        });
+                        r.score += 25;
+                    }
+                    strPtr += wcslen(strPtr) + 1;
+                }
+            }
+            RegCloseKey(hKey);
+        }
+    }
+
+    // ========================================================================
+    // PHASE 42: Factory Reset Forensics
+    // ========================================================================
+    {
+        HKEY hKey;
+        if (RegOpenKeyExW(HKEY_LOCAL_MACHINE, L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", 0, KEY_READ, &hKey) == ERROR_SUCCESS) {
+            DWORD installDate = 0;
+            DWORD dataSize = sizeof(installDate);
+            if (RegQueryValueExW(hKey, L"InstallDate", nullptr, nullptr, (LPBYTE)&installDate, &dataSize) == ERROR_SUCCESS) {
+                time_t currentTime = time(NULL);
+                if (currentTime > installDate) {
+                    double diffSeconds = difftime(currentTime, installDate);
+                    double diffDays = diffSeconds / (60.0 * 60.0 * 24.0);
+                    
+                    if (diffDays <= 7.0) {
+                        r.findings.push_back({
+                            "FACTORY_RESET",
+                            "Recent Windows Installation / Factory Reset",
+                            90,
+                            "PC was wiped/reset " + std::to_string((int)diffDays) + " days ago. Extremely high chance of anti-forensics."
+                        });
+                        r.score += 50;
+                    } else if (diffDays <= 30.0) {
+                        r.findings.push_back({
+                            "FACTORY_RESET",
+                            "Windows Installation / Factory Reset within 30 days",
+                            40,
+                            "PC was wiped/reset " + std::to_string((int)diffDays) + " days ago. Suspicious but could be legitimate."
+                        });
+                        r.score += 15;
+                    }
+                }
+            }
+            RegCloseKey(hKey);
+        }
+    }
+
+    UpdateProgress(42, 42);    // ========================================================================
     // SCORING + VERDICT
     // ========================================================================
     r.score = (std::min)(r.score, 100);
@@ -3301,11 +3437,13 @@ CheatResult FullScan() {
 std::string GetFriendlyCategory(const std::string& cat) {
     if (cat == "ROBLOX_MODULE" || cat == "ROBLOX_MEMORY") return "ROBLOX";
     if (cat == "BROWSER_HISTORY" || cat == "DELETED_BROWSER_HISTORY") return "HISTORY";
-    if (cat == "BAM_REGISTRY" || cat == "MUICACHE" || cat == "APPCOMPAT" || cat == "UNINSTALL_KEY" || cat == "USERASSIST" || cat == "AMCACHE") return "REGISTRY";
+    if (cat == "BAM_REGISTRY" || cat == "MUICACHE" || cat == "APPCOMPAT" || cat == "UNINSTALL_KEY" || cat == "AMCACHE" ||
+        cat == "PREFETCH" || cat == "USERASSIST" || cat == "RECENT_FILE" || cat == "ARCHIVE_HISTORY")
+        return "Process & Registry Traces";
     if (cat == "DNS_CACHE" || cat == "FIREWALL_RULE" || cat == "VIRTUAL_MACHINE_MAC" || cat == "REMOTE_DESKTOP_TOOL" || cat == "DUAL_PC_STREAMING" || cat == "STREAMING_PORT") return "NETWORK";
-    if (cat == "DELETED_CHEAT" || cat == "SUSPICIOUS_TEMP_PE" || cat == "RECENT_FILE" || cat == "CHEAT_FOLDER" || cat == "RECYCLE_BIN" || cat == "NTFS_ADS" || cat == "TIMESTOMPING" || cat == "HIGH_ENTROPY_PE") return "FILES";
+    if (cat == "DELETED_CHEAT" || cat == "SUSPICIOUS_TEMP_PE" || cat == "RECENT_FILE" || cat == "CHEAT_FOLDER" || cat == "INJECTOR_REMNANT" || cat == "ARCHIVE_HISTORY") return "FILE";
     if (cat == "DMA_CARD") return "HARDWARE";
-    if (cat == "SRUM_DATABASE" || cat == "VOLUME_SHADOW") return "FORENSICS";
+    if (cat == "SRUM_DATABASE" || cat == "VOLUME_SHADOW" || cat == "DEFENDER_EXCLUSION" || cat == "FACTORY_RESET") return "FORENSICS";
     return "SYSTEM";
 }
 
@@ -3346,14 +3484,14 @@ std::string GetBroadCategory(const Finding& f) {
         return "HWID Spoofers & Bypass Tools";
 
     // Deleted & Hidden Evidence
-    if (cat == "DELETED_CHEAT" || cat == "RECYCLE_BIN" || cat == "TIMESTOMPING" || cat == "NTFS_ADS" || cat == "VOLUME_SHADOW" || cat == "DELETED_BROWSER_HISTORY")
+    if (cat == "DELETED_CHEAT" || cat == "RECYCLE_BIN" || cat == "TIMESTOMPING" || cat == "NTFS_ADS" || cat == "VOLUME_SHADOW" || cat == "DELETED_BROWSER_HISTORY" || cat == "FACTORY_RESET")
         return "Deleted & Hidden Evidence";
 
-    // System & Hardware
+    // System Configuration & Telemetry
     if (cat == "HYPERVISOR_DETECTED" || cat == "VULNERABLE_BOOT_STATE" || cat == "ETW_BLINDING" || cat == "BYOVD_EXPLOIT" ||
-        cat == "TELEMETRY_BLOCK" || cat == "VIRTUAL_MACHINE" || cat == "EMULATOR_PROCESS" || cat == "EMULATOR_INSTALLED" ||
-        cat == "REMOTE_DESKTOP_TOOL" || cat == "USB_PLUG_PULL")
-        return "System & Hardware";
+        cat == "TELEMETRY_BLOCK" || cat == "VIRTUAL_MACHINE" || cat == "EMULATOR_PROCESS" || cat == "EMULATOR_FOLDER" ||
+        cat == "REMOTE_DESKTOP_TOOL" || cat == "USB_PLUG_PULL" || cat == "DEFENDER_EXCLUSION")
+        return "System Configuration & Telemetry";
 
     // Network & Anti-Forensics
     if (cat == "FIREWALL_RULE" || cat == "SCHEDULED_TASK" || cat == "SRUM_DATABASE")
@@ -3373,127 +3511,90 @@ std::string BuildSummary(const CheatResult& r) {
     std::ostringstream s;
     int executors = 0, aimbots = 0, spoofers = 0, browserHits = 0, registryHits = 0;
     int deletedEvidence = 0, systemFlags = 0, discordHits = 0, crashLogs = 0;
-    std::vector<std::string> executorNames, aimbotNames, spooferNames, siteNames;
+    
+    int validIndicators = 0;
+    for (const auto& f : r.findings) {
+        if (f.confidence > 0) validIndicators++;
+    }
 
+    // We will build a highly detailed narrative of the findings
+    s << "DETAILED FORENSIC ANALYSIS:\n";
+    s << "This system exhibits " << validIndicators << " indicator(s) of cheat tool usage or anti-forensics activity.\n\n";
+
+    bool foundAimbot = false;
+    bool foundExecutor = false;
+    bool foundSpoof = false;
+
+    // Detailed breakdown
     for (const auto& f : r.findings) {
         std::string cat = f.category;
         std::string combined = f.description + " " + f.evidence;
         std::string explanation = GetCheatExplanation(combined);
+        
+        std::string ageStr = "";
+        // Try to extract age from evidence (e.g. "[< 1 Week]" or "[> 1 Month]")
+        size_t ageStart = f.evidence.find("[");
+        size_t ageEnd = f.evidence.find("]");
+        if (ageStart != std::string::npos && ageEnd != std::string::npos && ageEnd > ageStart) {
+            std::string possibleAge = f.evidence.substr(ageStart, ageEnd - ageStart + 1);
+            if (possibleAge.find("Week") != std::string::npos || possibleAge.find("Month") != std::string::npos || possibleAge.find("Age") != std::string::npos) {
+                ageStr = " (Age: " + possibleAge + ")";
+            }
+        }
 
-        // Classify findings
-        if (cat == "PROCESS" || cat == "PREFETCH" || cat == "MUICACHE" || cat == "APPCOMPAT" ||
-            cat == "USERASSIST" || cat == "BAM_REGISTRY" || cat == "AMCACHE" ||
-            cat == "DLL_INJECTION" || cat == "MANUAL_MAPPING" || cat == "ROBLOX_CRASH_LOG" ||
-            cat == "INJECTOR_REMNANT" || cat == "CHEAT_FOLDER" || cat == "WINDOW_TITLE" || cat == "WINDOW_CLASS") {
-            // Check if it's an aimbot/external vs executor
-            std::string lwr = combined;
-            std::transform(lwr.begin(), lwr.end(), lwr.begin(), ::tolower);
-            if (lwr.find("aimbot") != std::string::npos || lwr.find("aimmy") != std::string::npos ||
-                lwr.find("matcha") != std::string::npos || lwr.find("camlock") != std::string::npos ||
-                lwr.find("matrix") != std::string::npos || lwr.find("newui") != std::string::npos ||
-                lwr.find("oldui") != std::string::npos || lwr.find("triggerbot") != std::string::npos ||
-                lwr.find("silent aim") != std::string::npos || lwr.find("esp") != std::string::npos ||
-                lwr.find("serotonin") != std::string::npos || lwr.find("thunderaim") != std::string::npos) {
-                aimbots++;
-                if (!explanation.empty() && aimbotNames.size() < 3) {
-                    std::string name = explanation.substr(0, explanation.find(" \xe2\x80\x94"));
-                    bool dup = false; for (auto& n : aimbotNames) if (n == name) dup = true;
-                    if (!dup) aimbotNames.push_back(name);
-                }
+        std::string lwr = combined;
+        std::transform(lwr.begin(), lwr.end(), lwr.begin(), ::tolower);
+
+        if (cat == "PROCESS" || cat == "PREFETCH" || cat == "MUICACHE" || cat == "APPCOMPAT" || cat == "USERASSIST" || cat == "BAM_REGISTRY" || cat == "INJECTOR_REMNANT" || cat == "CHEAT_FOLDER" || cat == "ARCHIVE_HISTORY") {
+            if (lwr.find("aimbot") != std::string::npos || lwr.find("aimmy") != std::string::npos || lwr.find("matcha") != std::string::npos || lwr.find("camlock") != std::string::npos || lwr.find("esp") != std::string::npos) {
+                s << " - DETECTED EXTERNAL AIMBOT/ESP: '" << f.description << "'" << ageStr << ".\n";
+                if (!explanation.empty()) s << "   Function: " << explanation << "\n";
+                foundAimbot = true;
             } else {
-                executors++;
-                if (!explanation.empty() && executorNames.size() < 4) {
-                    std::string name = explanation.substr(0, explanation.find(" \xe2\x80\x94"));
-                    bool dup = false; for (auto& n : executorNames) if (n == name) dup = true;
-                    if (!dup) executorNames.push_back(name);
-                }
+                s << " - DETECTED SCRIPT EXECUTOR/INJECTOR: '" << f.description << "'" << ageStr << ".\n";
+                if (!explanation.empty()) s << "   Function: " << explanation << "\n";
+                foundExecutor = true;
             }
         }
-        if (cat == "MAC_SPOOF" || cat == "HWID_SPOOFER" || cat == "CHEAT_DRIVER" || cat == "ACTIVE_CHEAT_DRIVER") {
+        else if (cat == "MAC_SPOOF" || cat == "HWID_SPOOFER" || cat == "CHEAT_DRIVER") {
+            s << " - DETECTED HWID SPOOFER / KERNEL DRIVER: '" << f.description << "'\n";
+            if (!explanation.empty()) s << "   Function: " << explanation << "\n";
+            foundSpoof = true;
             spoofers++;
-            if (!explanation.empty() && spooferNames.size() < 2) {
-                std::string name = explanation.substr(0, explanation.find(" \xe2\x80\x94"));
-                bool dup = false; for (auto& n : spooferNames) if (n == name) dup = true;
-                if (!dup) spooferNames.push_back(name);
-            }
         }
-        if (cat == "BROWSER_HISTORY" || cat == "DELETED_BROWSER_HISTORY") {
+        else if (cat == "BROWSER_HISTORY" || cat == "DELETED_BROWSER_HISTORY") {
+            s << " - BROWSER HISTORY: Visited cheat-related site '" << f.description << "'\n";
             browserHits++;
-            if (!explanation.empty() && siteNames.size() < 3) {
-                std::string name = explanation.substr(0, explanation.find(" \xe2\x80\x94"));
-                bool dup = false; for (auto& n : siteNames) if (n == name) dup = true;
-                if (!dup) siteNames.push_back(name);
-            }
         }
-        if (cat == "DISCORD_RPC_CACHE") discordHits++;
-        if (cat == "ROBLOX_CRASH_LOG") crashLogs++;
-        if (cat == "DELETED_CHEAT" || cat == "RECYCLE_BIN" || cat == "TIMESTOMPING") deletedEvidence++;
-        if (cat == "ETW_BLINDING" || cat == "VULNERABLE_BOOT_STATE" || cat == "BYOVD_EXPLOIT" || cat == "TELEMETRY_BLOCK") systemFlags++;
+        else if (cat == "DISCORD_RPC_CACHE") {
+            s << " - DISCORD RPC: Logged playing with cheat tool '" << f.description << "'\n";
+            discordHits++;
+        }
+        else if (cat == "DELETED_CHEAT" || cat == "RECYCLE_BIN" || cat == "TIMESTOMPING" || cat == "FACTORY_RESET") {
+            s << " - ANTI-FORENSICS / DELETED EVIDENCE: Recovered artifact '" << f.description << "'\n";
+            deletedEvidence++;
+        }
+        else if (cat == "DEFENDER_EXCLUSION") {
+            s << " - DEFENDER EXCLUSION: Cheat path whitelisted in Windows Defender ('" << f.description << "')\n";
+            systemFlags++;
+        }
+        else if (cat == "ROBLOX_CRASH_LOG") {
+            s << " - CRASH LOG: Evidence of DLL injection found in Roblox crash dumps ('" << f.description << "')\n";
+            crashLogs++;
+        }
     }
 
-    s << "This player has " << r.findings.size() << " cheat indicator" << (r.findings.size() != 1 ? "s" : "") << " across multiple evidence sources. ";
-
-    if (executors > 0) {
-        s << executors << " script executor" << (executors != 1 ? "s were" : " was") << " found";
-        if (!executorNames.empty()) {
-            s << " (";
-            for (size_t i = 0; i < executorNames.size(); i++) {
-                if (i > 0) s << (i == executorNames.size()-1 ? " and " : ", ");
-                s << executorNames[i];
-            }
-            s << ")";
-        }
-        s << ". ";
+    s << "\nCONCLUSION:\n";
+    if (r.score >= 80) {
+        s << "The evidence leaves no reasonable doubt of cheating. ";
+        if (foundAimbot && foundExecutor) s << "The player utilized both external overlays (aimbots/ESP) and internal script executors. ";
+        else if (foundAimbot) s << "The player utilized an external overlay cheat (Aimbot/ESP). ";
+        else if (foundExecutor) s << "The player utilized a script executor to inject code into the client. ";
+        if (foundSpoof) s << "They also attempted to evade hardware bans using a spoofer. ";
+        if (deletedEvidence > 0) s << "Forensic analysis defeated attempts to hide or delete cheat artifacts.";
     }
-
-    if (aimbots > 0) {
-        s << aimbots << " aimbot/external tool" << (aimbots != 1 ? "s were" : " was") << " detected";
-        if (!aimbotNames.empty()) {
-            s << " (";
-            for (size_t i = 0; i < aimbotNames.size(); i++) {
-                if (i > 0) s << (i == aimbotNames.size()-1 ? " and " : ", ");
-                s << aimbotNames[i];
-            }
-            s << ")";
-        }
-        s << ". ";
-    }
-
-    if (browserHits > 0) {
-        s << "Browser history shows visits to " << browserHits << " cheat-related site" << (browserHits != 1 ? "s" : "");
-        if (!siteNames.empty()) {
-            s << " (";
-            for (size_t i = 0; i < siteNames.size(); i++) {
-                if (i > 0) s << ", ";
-                s << siteNames[i];
-            }
-            s << ")";
-        }
-        s << ". ";
-    }
-
-    if (discordHits > 0) s << "Discord logs confirm active usage of cheat tools. ";
-    if (crashLogs > 0) s << "Roblox crash logs show cheats were injected during gameplay. ";
-
-    if (spoofers > 0) {
-        s << "HWID spoofing was detected";
-        if (!spooferNames.empty()) {
-            s << " (";
-            for (size_t i = 0; i < spooferNames.size(); i++) {
-                if (i > 0) s << ", ";
-                s << spooferNames[i];
-            }
-            s << ")";
-        }
-        s << ", indicating attempts to evade hardware bans. ";
-    }
-
-    if (deletedEvidence > 0) s << deletedEvidence << " deleted/hidden cheat artifact" << (deletedEvidence != 1 ? "s were" : " was") << " recovered from forensic analysis. ";
-    if (systemFlags > 0) s << "System-level anti-detection techniques were found. ";
-
-    if (r.score >= 80) s << "The volume and variety of evidence leaves no reasonable doubt.";
-    else if (r.score >= 50) s << "The evidence strongly suggests cheating but additional review may be warranted.";
-    else if (r.score >= 25) s << "Some suspicious indicators were found but are not conclusive on their own.";
+    else if (r.score >= 50) s << "The evidence strongly suggests cheating, but may warrant manual review of the listed artifacts.";
+    else if (r.score >= 25) s << "Some suspicious indicators were found, but they are not conclusive on their own.";
     else s << "No significant cheating indicators were detected.";
 
     return s.str();
@@ -3880,7 +3981,7 @@ int main(int argc, char* argv[]) {
     ui::PrintHeader("NatsuXAK Scanner");
     
     // Auto Update check (Version 6.0)
-    CheckForUpdates("7.2", L"/rahre/Roblox-Scanner/main/Owner/scanner.exe");
+    CheckForUpdates("7.3", L"/rahre/Roblox-Scanner/main/Owner/scanner.exe");
 
     std::string name;
     if (argc > 1) {
