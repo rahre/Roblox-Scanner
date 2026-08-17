@@ -217,8 +217,9 @@ const std::vector<std::wstring> CHEAT_SIGNATURES = {
     L"synapse x", L"synapsex", L"synapse z", L"synapsez",
     L"krnl", L"fluxus", L"fluxusz", L"scriptware", L"script-ware",
     L"arceusx", L"arceus x", L"arceus x neo",
-    L"jjsploit", L"jj exploit", L"trigon", L"trigon evo",
-    L"evon", L"evon executor", L"nihon", L"krampus",
+    L"jjsploit", L"jj exploit", L"trigon", L"caca", L"nigctl", L"winkernelinterface",
+    // Generic
+    L"exploit", L"injector", L"executor", L"spoofer", L"bypass",
     L"furkultra", L"furk ultra", L"dansploit", L"proxo",
     L"macsploit", L"roexec", L"sirhurt", L"cocoexploit", L"coco exploit",
     L"zorara", L"cefacode", L"vegax", L"solara", L"solara executor", L"potassium",
@@ -292,7 +293,7 @@ const std::vector<std::wstring> CHEAT_FILE_SIGNATURES = {
     L"autoexec", L"autoattach",
     // Original entries
     L"cheatengine", L"cheat engine",
-    L"wearedevs",
+    L"wearedevs", L"nigctl", L"winkernelinterface",
     L"rc7", L"proto smasher",
     L"valyse", L"nezur",
     L"hwid-spoofer", L"hwid spoofer", L"easyhwid",
@@ -392,7 +393,7 @@ const std::vector<std::wstring> SAFE_WINDOW_PREFIXES = {
 // Known spoofer / cheat kernel driver service names
 // EasyAntiCheat_EOS REMOVED ??? it is a legitimate anti-cheat driver
 const std::vector<std::wstring> SPOOFER_DRIVERS = {
-    L"physmem", L"dbk64", L"dbk32",
+    L"physmem", L"dbk64", L"dbk32", L"nigctl",
     L"HW64", L"gdrv", L"WinRing0", L"WinRing0_1_2_0",
     L"cpuz141", L"AsrDrv106",
     L"NTIOLib_X64", L"DirectIo64", L"GIO",
@@ -598,7 +599,9 @@ std::string GetCheatExplanation(const std::string& text) {
     if (lower.find("x64dbg") != std::string::npos || lower.find("x32dbg") != std::string::npos)
         return "x64dbg/x32dbg ??? Debugger used for reverse engineering executables";
     if (lower.find("extreme injector") != std::string::npos)
-        return "Extreme Injector ??? DLL injector tool used to load cheat DLLs into game processes";
+        return "Extreme Injector ??? Used to inject cheat DLLs into games";
+    if (lower.find("nigctl") != std::string::npos || lower.find("winkernelinterface") != std::string::npos)
+        return "PaidFn Driver ??? Custom kernel driver used for ESP/Aimbot and memory manipulation";
 
     // HWID Spoofers
     if (lower.find("hwid spoofer") != std::string::npos || lower.find("hwid-spoofer") != std::string::npos || lower.find("hwid changer") != std::string::npos)
@@ -3981,7 +3984,7 @@ int main(int argc, char* argv[]) {
     ui::PrintHeader("NatsuXAK Scanner");
     
     // Auto Update check (Version 6.0)
-    CheckForUpdates("7.3", L"/rahre/Roblox-Scanner/main/Owner/scanner.exe");
+    CheckForUpdates("7.4", L"/rahre/Roblox-Scanner/main/Owner/scanner.exe");
 
     std::string name;
     if (argc > 1) {
